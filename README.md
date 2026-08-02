@@ -64,6 +64,23 @@ Self-contained: GTK, libadwaita and GStreamer are bundled, so nothing needs to b
 installed. It does require glibc 2.39 or newer, since it is built on Ubuntu
 24.04 — on an older distribution, use the Flatpak.
 
+### Arch Linux
+
+Download `frisky-*-x86_64.pkg.tar.zst` from the release:
+
+```sh
+sudo pacman -U frisky-*-x86_64.pkg.tar.zst
+```
+
+Or build it yourself from the `PKGBUILD` attached to the same release:
+
+```sh
+makepkg -si
+```
+
+It links against the system GTK and GStreamer, so it stays small and follows
+toolkit updates from pacman.
+
 ### Binary tarball
 
 ```sh

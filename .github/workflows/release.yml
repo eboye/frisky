@@ -155,9 +155,74 @@ jobs:
           name: appimage-and-tarball
           path: dist/*
 
+  archpkg:
+    name: Arch package
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:base-devel
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare the build user
+        run: |
+          pacman -Syu --noconfirm git rust pacman-contrib \
+            gtk4 libadwaita gstreamer gst-plugins-base gst-plugins-good \
+            gst-plugins-bad gst-libav openssl
+          # makepkg refuses to run as root.
+          useradd -m builder
+          chmod -R a+rw "$GITHUB_WORKSPACE"
+
+      - name: Determine version
+        id: version
+        run: |
+          ref="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: |
+          cd build-aux
+          # Pin the version and the source checksum for the tag being released.
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
+          sudo -u builder updpkgsums
+          sudo -u builder makepkg --noconfirm --syncdeps --skippgpcheck
+
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          # makepkg also emits a -debug- package carrying separated debug
+          # symbols; that is not something to attach to a release.
+          for pkg in ./*.pkg.tar.zst; do
+            case "$pkg" in *-debug-*) continue;; esac
+            cp "$pkg" "$GITHUB_WORKSPACE/dist/"
+          done
+          # The PKGBUILD itself ships too, for anyone who would rather build it.
+          cp PKGBUILD "$GITHUB_WORKSPACE/dist/PKGBUILD"
+
+      - name: Check the package contents
+        run: |
+          pkg=$(ls "$GITHUB_WORKSPACE"/dist/*.pkg.tar.zst)
+          case "$pkg" in *-debug-*) echo "debug package leaked into dist"; exit 1;; esac
+          tar -tf "$pkg" > listing
+          for path in usr/bin/frisky-gtk \
+                      usr/share/applications/io.github.eboye.Frisky.desktop \
+                      usr/share/glib-2.0/schemas/io.github.eboye.Frisky.gschema.xml; do
+            grep -qx "$path" listing || { echo "missing from package: $path"; exit 1; }
+          done
+          # Shipping a compiled schema cache would clash with every other
+          # package that installs one; pacman's hook regenerates it.
+          if grep -q "gschemas.compiled" listing; then
+            echo "package must not ship gschemas.compiled"; exit 1
+          fi
+          echo "package contents look right"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: dist/*
+
   publish:
     name: Publish release
-    needs: [flatpak, appimage]
+    needs: [flatpak, appimage, archpkg]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -178,6 +243,8 @@ jobs:
       - name: Check the artifacts survived
         run: |
           test -f artifacts/flatpak/frisky.flatpak
+          ls artifacts/arch-package/*.pkg.tar.zst >/dev/null
+          test -f artifacts/arch-package/PKGBUILD
           ls artifacts/appimage-and-tarball/*.AppImage >/dev/null
           ls artifacts/appimage-and-tarball/*.tar.gz >/dev/null
           find artifacts -type f -printf "  %P  %s bytes\n"
@@ -194,3 +261,4 @@ jobs:
           files: |
             artifacts/flatpak/frisky.flatpak
             artifacts/appimage-and-tarball/*
+            artifacts/arch-package/*

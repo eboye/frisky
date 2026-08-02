@@ -29,6 +29,13 @@ chmod +x Frisky-*-x86_64.AppImage
 ./Frisky-*-x86_64.AppImage
 ```
 
+**Arch Linux** — links against the system GTK and GStreamer, so it stays small
+and follows toolkit updates from pacman. The `PKGBUILD` is attached too.
+
+```sh
+sudo pacman -U frisky-*-x86_64.pkg.tar.zst
+```
+
 **Binary tarball** — for a system-style install.
 
 ```sh
