@@ -57,6 +57,8 @@ mod imp {
         #[template_child]
         pub view_stack: TemplateChild<gtk::Stack>,
         #[template_child]
+        pub toolbar_view: TemplateChild<adw::ToolbarView>,
+        #[template_child]
         pub compact_bar: TemplateChild<gtk::Box>,
         #[template_child]
         pub compact_artwork_overlay: TemplateChild<gtk::Overlay>,
@@ -264,6 +266,9 @@ impl FriskyWindow {
             self.add_css_class("compact-mode");
         } else {
             self.remove_css_class("compact-mode");
+            // The breakpoint hides the header bar on the way in but nothing
+            // restores it on the way out, so do it here.
+            self.imp().toolbar_view.set_reveal_top_bars(true);
         }
         // Re-apply so the window picks up the current channel's gradient.
         self.update_channel_styling();
@@ -381,7 +386,7 @@ impl FriskyWindow {
         if compact {
             self.set_default_size(420, 760);
         } else {
-            self.set_default_size(400, 150);
+            self.set_default_size(470, 96);
         }
     }
 

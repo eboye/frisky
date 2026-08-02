@@ -36,13 +36,13 @@
     <property name="title" translatable="yes">Frisky</property>
     <property name="default-width">420</property>
     <property name="default-height">760</property>
-    <property name="width-request">320</property>
+    <property name="width-request">440</property>
     <property name="height-request">64</property>
 
     <property name="content">
       <object class="AdwToastOverlay" id="toast_overlay">
         <property name="child">
-          <object class="AdwToolbarView">
+          <object class="AdwToolbarView" id="toolbar_view">
 
             <child type="top">
               <object class="AdwHeaderBar" id="header_bar">
@@ -248,106 +248,137 @@
                   <object class="GtkStackPage">
                     <property name="name">compact</property>
                     <property name="child">
-                      <object class="GtkBox" id="compact_view">
-                        <property name="orientation">vertical</property>
-                        <property name="valign">center</property>
-                        <child>
-                          <object class="GtkBox" id="compact_bar">
-                            <style><class name="compact-bar"/></style>
-                            <property name="spacing">10</property>
-                            <property name="margin-top">2</property>
-                            <property name="margin-bottom">10</property>
-                            <property name="margin-start">12</property>
-                            <property name="margin-end">12</property>
-
-                            <!-- Cover with the visualiser laid over it, added
-                                 in code. -->
+                      <!-- With the header bar folded away there is nothing left
+                           to drag the window by, so the whole bar becomes the
+                           handle. -->
+                      <object class="GtkWindowHandle">
+                        <property name="child">
+                          <object class="GtkBox" id="compact_view">
+                            <property name="orientation">vertical</property>
+                            <property name="valign">center</property>
                             <child>
-                              <object class="GtkOverlay" id="compact_artwork_overlay">
-                                <style><class name="compact-art"/></style>
-                                <property name="valign">center</property>
-                                <property name="child">
-                                  <object class="GtkPicture" id="compact_artwork">
-                                    <property name="content-fit">cover</property>
-                                    <property name="width-request">44</property>
-                                    <property name="height-request">44</property>
-                                    <property name="can-shrink">True</property>
+                              <object class="GtkBox" id="compact_bar">
+                                <style><class name="compact-bar"/></style>
+                                <property name="spacing">10</property>
+                                <!-- Floor for the row: below this the track,
+                                     progress and chips stop being readable. -->
+                                <property name="height-request">52</property>
+                                <property name="margin-top">6</property>
+                                <property name="margin-bottom">8</property>
+                                <property name="margin-start">10</property>
+                                <property name="margin-end">6</property>
+
+                                <child>
+                                  <object class="GtkOverlay" id="compact_artwork_overlay">
+                                    <style><class name="compact-art"/></style>
+                                    <property name="valign">center</property>
+                                    <property name="child">
+                                      <object class="GtkPicture" id="compact_artwork">
+                                        <property name="content-fit">cover</property>
+                                        <property name="width-request">44</property>
+                                        <property name="height-request">44</property>
+                                        <property name="can-shrink">True</property>
+                                      </object>
+                                    </property>
                                   </object>
-                                </property>
-                              </object>
-                            </child>
-
-                            <child>
-                              <object class="GtkBox">
-                                <property name="orientation">vertical</property>
-                                <property name="valign">center</property>
-                                <property name="hexpand">True</property>
-                                <property name="spacing">4</property>
+                                </child>
 
                                 <child>
                                   <object class="GtkBox">
-                                    <property name="spacing">8</property>
+                                    <property name="orientation">vertical</property>
+                                    <property name="valign">center</property>
+                                    <property name="hexpand">True</property>
+                                    <property name="spacing">4</property>
+
                                     <child>
-                                      <object class="GtkLabel" id="compact_title">
-                                        <property name="label" translatable="yes">Not playing</property>
-                                        <property name="xalign">0</property>
-                                        <property name="hexpand">True</property>
-                                        <property name="ellipsize">end</property>
-                                        <property name="single-line-mode">True</property>
-                                        <style><class name="compact-title"/></style>
+                                      <object class="GtkBox">
+                                        <property name="spacing">8</property>
+                                        <child>
+                                          <object class="GtkLabel" id="compact_title">
+                                            <property name="label" translatable="yes">Not playing</property>
+                                            <property name="xalign">0</property>
+                                            <property name="hexpand">True</property>
+                                            <property name="ellipsize">end</property>
+                                            <property name="single-line-mode">True</property>
+                                            <property name="width-chars">14</property>
+                                            <style><class name="compact-title"/></style>
+                                          </object>
+                                        </child>
+                                        <child>
+                                          <object class="GtkBox" id="compact_chips">
+                                            <property name="spacing">3</property>
+                                            <property name="valign">center</property>
+                                          </object>
+                                        </child>
                                       </object>
                                     </child>
-                                    <!-- Channel chips are built in code. -->
+
                                     <child>
-                                      <object class="GtkBox" id="compact_chips">
-                                        <property name="spacing">3</property>
-                                        <property name="valign">center</property>
+                                      <object class="GtkBox">
+                                        <property name="spacing">8</property>
+                                        <child>
+                                          <object class="GtkProgressBar" id="compact_progress">
+                                            <property name="hexpand">True</property>
+                                            <property name="valign">center</property>
+                                            <style><class name="compact-progress"/></style>
+                                          </object>
+                                        </child>
+                                        <child>
+                                          <object class="GtkLabel" id="compact_time">
+                                            <property name="label"></property>
+                                            <property name="single-line-mode">True</property>
+                                            <style><class name="compact-time"/></style>
+                                          </object>
+                                        </child>
                                       </object>
                                     </child>
                                   </object>
                                 </child>
 
                                 <child>
-                                  <object class="GtkBox">
-                                    <property name="spacing">8</property>
-                                    <child>
-                                      <object class="GtkProgressBar" id="compact_progress">
-                                        <property name="hexpand">True</property>
-                                        <property name="valign">center</property>
-                                        <style><class name="compact-progress"/></style>
+                                  <object class="GtkButton" id="compact_play_button">
+                                    <property name="valign">center</property>
+                                    <property name="action-name">win.toggle-playback</property>
+                                    <property name="tooltip-text" translatable="yes">Play</property>
+                                    <style>
+                                      <class name="circular"/>
+                                      <class name="compact-play"/>
+                                    </style>
+                                    <property name="child">
+                                      <object class="GtkImage" id="compact_play_icon">
+                                        <property name="icon-name">media-playback-start-symbolic</property>
+                                        <property name="pixel-size">16</property>
                                       </object>
-                                    </child>
-                                    <child>
-                                      <object class="GtkLabel" id="compact_time">
-                                        <property name="label"></property>
-                                        <property name="single-line-mode">True</property>
-                                        <style><class name="compact-time"/></style>
-                                      </object>
-                                    </child>
+                                    </property>
                                   </object>
                                 </child>
-                              </object>
-                            </child>
 
-                            <child>
-                              <object class="GtkButton" id="compact_play_button">
-                                <property name="valign">center</property>
-                                <property name="action-name">win.toggle-playback</property>
-                                <property name="tooltip-text" translatable="yes">Play</property>
-                                <style>
-                                  <class name="circular"/>
-                                  <class name="compact-play"/>
-                                </style>
-                                <property name="child">
-                                  <object class="GtkImage" id="compact_play_icon">
-                                    <property name="icon-name">media-playback-start-symbolic</property>
-                                    <property name="pixel-size">16</property>
+                                <!-- The header bar's menu and window controls,
+                                     folded into the row. -->
+                                <child>
+                                  <object class="GtkMenuButton" id="compact_menu_button">
+                                    <property name="icon-name">view-more-symbolic</property>
+                                    <property name="tooltip-text" translatable="yes">Main Menu</property>
+                                    <property name="valign">center</property>
+                                    <property name="menu-model">primary_menu</property>
+                                    <style>
+                                      <class name="flat"/>
+                                      <class name="compact-titlebutton"/>
+                                    </style>
                                   </object>
-                                </property>
+                                </child>
+
+                                <child>
+                                  <object class="GtkWindowControls">
+                                    <property name="side">end</property>
+                                    <property name="valign">center</property>
+                                    <style><class name="compact-controls"/></style>
+                                  </object>
+                                </child>
                               </object>
                             </child>
                           </object>
-                        </child>
+                        </property>
                       </object>
                     </property>
                   </object>
@@ -367,6 +398,7 @@
       <object class="AdwBreakpoint">
         <condition>max-height: 300sp</condition>
         <setter object="view_stack" property="visible-child-name">compact</setter>
+        <setter object="toolbar_view" property="reveal-top-bars">False</setter>
       </object>
     </child>
   </template>

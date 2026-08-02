@@ -26,8 +26,9 @@ Built with GTK4, libadwaita and GStreamer.
 - **Cover art and tracklist** for the DJ mix currently on air
 - **Live visualiser** drawn over the artwork, fading away on hover
 - **MPRIS** — play, stop and switch channels from the GNOME top bar, media keys and lock screen
-- **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — the whole window becomes the channel gradient: cover
-  and visualiser on the left, track, mix progress and channel chips on the right
+- **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — one row: the whole window becomes the channel
+  gradient, the title bar folds into it, and cover, visualiser, track, mix progress, channel chips
+  and window controls all sit on the same line
 - **Notifications** when the mix changes
 - Follows the system light/dark preference, and remembers your channel and volume
 

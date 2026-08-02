@@ -214,20 +214,35 @@
   box-shadow: none;
 }
 
-/* The header sits on the gradient now, so its own text and controls need to be
- * light regardless of the system theme. */
-.compact-mode headerbar {
+/* The menu and window controls are folded into the mini row, so they sit on the
+ * gradient and need light styling regardless of the system theme. */
+.compact-mode windowcontrols button,
+.compact-titlebutton {
   color: #ffffff;
+  background: none;
+  background-image: none;
   border: none;
-  min-height: 34px;
+  box-shadow: none;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  margin: 0 1px;
+  transition: background-color 150ms ease;
 }
 
-.compact-mode headerbar button {
-  color: #ffffff;
+.compact-mode windowcontrols button:hover,
+.compact-titlebutton:hover {
+  background-color: alpha(#ffffff, 0.22);
 }
 
-.compact-mode headerbar windowtitle {
-  color: alpha(#ffffff, 0.9);
+.compact-mode windowcontrols button:active,
+.compact-titlebutton:active {
+  background-color: alpha(#ffffff, 0.32);
+}
+
+/* Close keeps its destructive tint so it stays distinguishable. */
+.compact-mode windowcontrols button.close:hover {
+  background-color: alpha(#e01b24, 0.85);
 }
 
 .compact-art {
