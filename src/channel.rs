@@ -204,11 +204,15 @@ mod tests {
 
     #[test]
     fn ordinary_tokens_survive_encoding_unchanged() {
-        // JWTs and the like are made of unreserved characters, so encoding must
-        // not disturb the URL the web player would have produced.
+        // Real tokens are built from unreserved characters, so encoding must not
+        // disturb the URL the web player would have produced. The fixture below
+        // covers that whole character class — letters, digits, '-', '_', '.' and
+        // '~' — deliberately without imitating the shape of a JWT, which entropy
+        // scanners flag on sight.
+        const UNRESERVED: &str = "placeholder-token_1.2~ok";
         assert_eq!(
-            Channel::Deep.stream_url(Quality::HiFi, Some("eyJhbG.c19-x_Y.zZ~q")),
-            "https://stream.deep.friskyradio.com/mp3_high?token=eyJhbG.c19-x_Y.zZ~q"
+            Channel::Deep.stream_url(Quality::HiFi, Some(UNRESERVED)),
+            "https://stream.deep.friskyradio.com/mp3_high?token=placeholder-token_1.2~ok"
         );
     }
 
