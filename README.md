@@ -243,6 +243,16 @@ src/
 Background work runs on a tokio runtime and reaches the GTK main loop as
 `AppEvent`s over an async channel; no GTK type ever leaves the main thread.
 
+## Platform support
+
+Linux only. Frisky is built on GTK4, libadwaita, MPRIS and the Secret Service,
+and it targets the GNOME desktop.
+
+macOS and Windows are not planned. For macOS specifically, the groundwork has
+been analysed in [docs/MACOS.md](docs/MACOS.md) so that anyone who wants to
+attempt it does not have to start from scratch — see the
+[tracking issue](https://github.com/eboye/frisky/issues/1).
+
 ## Contributing
 
 Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup, the dev loop, what a
