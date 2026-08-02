@@ -272,6 +272,22 @@ src/
 Background work runs on a tokio runtime and reaches the GTK main loop as
 `AppEvent`s over an async channel; no GTK type ever leaves the main thread.
 
+## Contributing
+
+Two documents cover what the README does not:
+
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the pieces fit
+  together and why: the threading model, the player state machine, how
+  now-playing stays fresh without polling, and how the compact player is
+  layered.
+- **[CLAUDE.md](CLAUDE.md)** — conventions, verification standards, settled
+  project decisions, and a list of the traps in this stack that have already
+  cost someone an afternoon. Worth reading before the first change, whether
+  you are a person or an agent.
+
+Please run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and
+`cargo test --all` before opening a pull request; CI enforces all three.
+
 ## Licence
 
 [GPL-3.0-or-later](COPYING).
