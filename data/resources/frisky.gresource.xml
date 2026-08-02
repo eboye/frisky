@@ -2,6 +2,9 @@
 <gresources>
   <gresource prefix="/io/github/eboye/Frisky">
     <file compressed="true" preprocess="xml-stripblanks">window.ui</file>
+    <!-- GTK resolves this by path, so the name and location are not ours to
+         choose: it must sit at <app-id-path>/gtk/help-overlay.ui. -->
+    <file compressed="true" preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
     <file compressed="true">style.css</file>
   </gresource>
 </gresources>

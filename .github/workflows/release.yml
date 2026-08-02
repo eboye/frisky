@@ -12,6 +12,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Read-only by default; only the publish job below widens this to write, so the
+# three build jobs cannot alter the repository even if a build step misbehaves.
+permissions:
+  contents: read
+
 jobs:
   flatpak:
     name: Flatpak bundle
@@ -23,7 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+      # Pinned to a commit rather than @master: this action runs privileged in a
+      # container with access to the checkout, and the upstream repo publishes
+      # no release tags to track instead.
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@933e9e8ca36e85046ebca8e211f0785c6becac40
         with:
           bundle: frisky.flatpak
           manifest-path: build-aux/io.github.eboye.Frisky.json

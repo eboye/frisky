@@ -8,6 +8,7 @@
 //! Gradient stops mirror frisky.fm's own per-channel styling so the app reads
 //! as part of the same family.
 
+use gtk::glib;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -162,7 +163,14 @@ impl Channel {
             quality.mount()
         );
         match token {
-            Some(t) if !t.is_empty() => format!("{base}?token={t}"),
+            // Percent-encoded, so a token carrying a reserved character cannot
+            // silently truncate the query or graft extra parameters onto it.
+            // Ordinary tokens are entirely unreserved characters and pass
+            // through unchanged. `validate_stream` encodes the same value via
+            // reqwest, so the two must agree on the wire.
+            Some(t) if !t.is_empty() => {
+                format!("{base}?token={}", glib::Uri::escape_string(t, None, false))
+            }
             _ => base,
         }
     }
@@ -192,6 +200,29 @@ mod tests {
             Channel::Deep.stream_url(Quality::HiFi, Some("abc123")),
             "https://stream.deep.friskyradio.com/mp3_high?token=abc123"
         );
+    }
+
+    #[test]
+    fn ordinary_tokens_survive_encoding_unchanged() {
+        // JWTs and the like are made of unreserved characters, so encoding must
+        // not disturb the URL the web player would have produced.
+        assert_eq!(
+            Channel::Deep.stream_url(Quality::HiFi, Some("eyJhbG.c19-x_Y.zZ~q")),
+            "https://stream.deep.friskyradio.com/mp3_high?token=eyJhbG.c19-x_Y.zZ~q"
+        );
+    }
+
+    #[test]
+    fn reserved_characters_in_a_token_cannot_escape_the_query() {
+        // Without encoding, the '&' would start a second parameter and the '#'
+        // would truncate the URL entirely.
+        let url = Channel::Deep.stream_url(Quality::HiFi, Some("a&b=c#d e"));
+        assert_eq!(
+            url,
+            "https://stream.deep.friskyradio.com/mp3_high?token=a%26b%3Dc%23d%20e"
+        );
+        assert_eq!(url.matches('?').count(), 1);
+        assert!(!url.contains('#'), "fragment would truncate the stream URL");
     }
 
     #[test]

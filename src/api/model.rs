@@ -27,20 +27,41 @@ pub struct Image {
 /// Response body of `GET /v3/stations`, keyed by station id.
 pub type StationsResponse = HashMap<String, Station>;
 
+/// Deserializes `T`, degrading to `None` rather than failing.
+///
+/// `GET /v3/stations` returns all four channels in one object, so serde's
+/// all-or-nothing parsing means one station growing an unexpected field type
+/// would blank the entire app. Isolating the failure costs one intermediate
+/// `Value` per station and keeps the other three playing.
+fn lenient<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Station {
+    /// Not read: the response is keyed by station id already. Kept optional so
+    /// its absence can never fail the parse.
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub title: String,
     /// Currently-airing mix, already resolved by the API.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient")]
     pub mix: Option<Mix>,
-    #[serde(rename = "scheduledMix", default)]
+    #[serde(rename = "scheduledMix", default, deserialize_with = "lenient")]
     pub scheduled_mix: Option<ScheduleEntry>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Mix {
+    #[serde(default)]
     pub id: u64,
+    #[serde(default)]
     pub title: String,
     #[serde(default)]
     pub artist_id: Option<Ref>,
@@ -64,8 +85,11 @@ pub struct Track {
 /// `GET /v3/stations/playlists` and the now-playing WebSocket.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ScheduleEntry {
+    #[serde(default)]
     pub id: u64,
-    pub mixes_id: Ref,
+    #[serde(default)]
+    pub mixes_id: Option<Ref>,
+    #[serde(default)]
     pub station: String,
     #[serde(default)]
     pub scheduled_start_time: Option<DateTime<Utc>>,
@@ -73,19 +97,11 @@ pub struct ScheduleEntry {
     pub scheduled_end_time: Option<DateTime<Utc>>,
 }
 
-impl ScheduleEntry {
-    /// Whether this entry covers `now`.
-    pub fn is_airing_at(&self, now: DateTime<Utc>) -> bool {
-        match (self.scheduled_start_time, self.scheduled_end_time) {
-            (Some(start), Some(end)) => start <= now && now < end,
-            _ => false,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct Show {
+    #[serde(default)]
     pub id: u64,
+    #[serde(default)]
     pub title: String,
     /// Square 1200x1200 artwork. Preferred for cover display.
     #[serde(default)]
@@ -107,7 +123,9 @@ impl Show {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Artist {
+    #[serde(default)]
     pub id: u64,
+    #[serde(default)]
     pub title: String,
 }
 
@@ -166,16 +184,34 @@ mod tests {
     }
 
     #[test]
-    fn schedule_entry_airing_window_is_half_open() {
-        let stations: StationsResponse = serde_json::from_str(STATIONS_JSON).unwrap();
-        let entry = stations["frisky"].scheduled_mix.as_ref().unwrap();
+    fn a_malformed_station_does_not_take_down_the_others() {
+        // The whole app reads from one object, so serde's all-or-nothing
+        // parsing would otherwise turn one upstream change into four blank
+        // channels.
+        let json = r#"{
+          "frisky": {"id": "frisky", "title": "Frisky",
+                     "mix": {"id": 1, "title": "Good mix", "genre": [], "track_list": []}},
+          "deep": {"id": "deep", "title": "Deep",
+                   "mix": {"id": "not-a-number", "title": 42}}
+        }"#;
 
-        let at = |s: &str| DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc);
-        assert!(entry.is_airing_at(at("2026-08-02T11:30:00Z")));
-        // Start is inclusive, end is exclusive.
-        assert!(entry.is_airing_at(at("2026-08-02T11:22:20Z")));
-        assert!(!entry.is_airing_at(at("2026-08-02T12:22:07Z")));
-        assert!(!entry.is_airing_at(at("2026-08-02T10:00:00Z")));
+        let stations: StationsResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            stations["frisky"].mix.as_ref().map(|m| m.title.as_str()),
+            Some("Good mix")
+        );
+        // The broken one loses its mix, and only its mix.
+        assert!(stations["deep"].mix.is_none());
+        assert_eq!(stations["deep"].title, "Deep");
+    }
+
+    #[test]
+    fn a_station_stripped_to_nothing_still_parses() {
+        // Every field the app does not strictly need is optional, so an
+        // unrecognisable station degrades rather than failing the response.
+        let stations: StationsResponse = serde_json::from_str(r#"{"chill": {}}"#).unwrap();
+        assert!(stations["chill"].mix.is_none());
+        assert!(stations["chill"].scheduled_mix.is_none());
     }
 
     #[test]
@@ -193,7 +229,7 @@ mod tests {
         let entries: Vec<ScheduleEntry> = serde_json::from_str(json).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].station, "chill");
-        assert_eq!(entries[0].mixes_id.id, 73589);
+        assert_eq!(entries[0].mixes_id.as_ref().map(|r| r.id), Some(73589));
     }
 
     #[test]

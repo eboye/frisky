@@ -9,6 +9,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Nothing here writes to the repository. Granting the token read access by
+# default means a compromised build step cannot push, tag or publish.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Build and test
@@ -68,7 +73,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+      # Pinned to a commit rather than @master: this action runs privileged in a
+      # container with access to the checkout, and the upstream repo publishes
+      # no release tags to track instead.
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@933e9e8ca36e85046ebca8e211f0785c6becac40
         with:
           bundle: frisky.flatpak
           manifest-path: build-aux/io.github.eboye.Frisky.json

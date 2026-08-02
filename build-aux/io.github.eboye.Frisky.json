@@ -65,7 +65,16 @@
             "sources": [
                 {
                     "type": "dir",
-                    "path": ".."
+                    "path": "..",
+                    "//": "Build outputs are multi-gigabyte and would be copied into the build tree on every run; .git adds nothing the build needs.",
+                    "skip": [
+                        "target",
+                        "build",
+                        ".flatpak-builder",
+                        "repo",
+                        "dist",
+                        ".git"
+                    ]
                 },
                 "cargo-sources.json"
             ]

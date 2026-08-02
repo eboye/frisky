@@ -13,7 +13,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{debug, warn};
@@ -41,6 +41,16 @@ const MAX_SLEEP: Duration = Duration::from_secs(1800);
 
 const RECONNECT_MIN: Duration = Duration::from_secs(2);
 const RECONNECT_MAX: Duration = Duration::from_secs(120);
+/// A socket that goes this long without a word is treated as dead.
+///
+/// Silence is normal — the server pushes on connect and at schedule revisions,
+/// which can be hours apart — but a half-open connection left by a suspend or a
+/// network change looks exactly the same from here, and never resolves itself.
+/// Reconnecting costs one handshake.
+const SOCKET_IDLE_TIMEOUT: Duration = Duration::from_secs(900);
+/// A connection that ends sooner than this never really established, so it must
+/// not reset the backoff.
+const SOCKET_HEALTHY_AFTER: Duration = Duration::from_secs(60);
 
 /// Reason the coordinator woke up.
 enum Wake {
@@ -85,6 +95,7 @@ async fn coordinator(
     let mut artists: HashMap<u64, String> = HashMap::new();
     let mut schedule: Vec<ScheduleEntry> = Vec::new();
     let mut wake = Wake::Requested;
+    let mut last_refresh: Option<Instant> = None;
 
     loop {
         match wake {
@@ -94,6 +105,19 @@ async fn coordinator(
             }
             Wake::Timer | Wake::Requested => {}
         }
+
+        // Requests are cheap to make and not cheap to serve: a stream
+        // reconnecting, a channel switch and a held-down refresh key all land
+        // here. Hold the floor at MIN_REFRESH whatever the trigger, and let one
+        // call answer everything that queued up while waiting.
+        if let Some(previous) = last_refresh {
+            let since = previous.elapsed();
+            if since < MIN_REFRESH {
+                tokio::time::sleep(MIN_REFRESH - since).await;
+                while refresh_rx.try_recv().is_ok() {}
+            }
+        }
+        last_refresh = Some(Instant::now());
 
         match refresh(&client, &events, &mut artists).await {
             Ok(()) => {}
@@ -214,14 +238,17 @@ async fn socket_loop(schedule_tx: mpsc::UnboundedSender<Vec<ScheduleEntry>>) {
     let mut backoff = RECONNECT_MIN;
 
     loop {
+        let started = Instant::now();
         match consume_socket(&schedule_tx).await {
-            Ok(()) => {
-                debug!("now-playing socket closed cleanly, reconnecting");
-                backoff = RECONNECT_MIN;
-            }
-            Err(error) => {
-                warn!("now-playing socket error: {error:#}");
-            }
+            Ok(()) => debug!("now-playing socket closed, reconnecting"),
+            Err(error) => warn!("now-playing socket error: {error:#}"),
+        }
+
+        // Only a connection that actually lasted counts as a success. Resetting
+        // on any clean close would let a server that accepts and immediately
+        // hangs up hold us in a two-second reconnect loop indefinitely.
+        if started.elapsed() >= SOCKET_HEALTHY_AFTER {
+            backoff = RECONNECT_MIN;
         }
 
         // The coordinator's timer keeps metadata fresh meanwhile, so a socket
@@ -234,9 +261,21 @@ async fn socket_loop(schedule_tx: mpsc::UnboundedSender<Vec<ScheduleEntry>>) {
 async fn consume_socket(schedule_tx: &mpsc::UnboundedSender<Vec<ScheduleEntry>>) -> Result<()> {
     let (stream, _) = tokio_tungstenite::connect_async(WEBSOCKET_URL).await?;
     debug!("now-playing socket connected");
-    let (_, mut read) = stream.split();
+    // The sink is bound rather than dropped: we never write, but tungstenite
+    // flushes its own pong replies through it.
+    let (_sink, mut read) = stream.split();
 
-    while let Some(message) = read.next().await {
+    loop {
+        let message = match tokio::time::timeout(SOCKET_IDLE_TIMEOUT, read.next()).await {
+            Ok(Some(message)) => message,
+            // The peer closed the stream.
+            Ok(None) => break,
+            Err(_) => {
+                debug!("now-playing socket silent for too long; reconnecting");
+                break;
+            }
+        };
+
         let text = match message? {
             Message::Text(text) => text.to_string(),
             Message::Binary(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
@@ -270,7 +309,7 @@ mod tests {
     fn entry(station: &str, start: &str, end: &str) -> ScheduleEntry {
         ScheduleEntry {
             id: 1,
-            mixes_id: Ref { id: 1 },
+            mixes_id: Some(Ref { id: 1 }),
             station: station.into(),
             scheduled_start_time: Some(at(start)),
             scheduled_end_time: Some(at(end)),

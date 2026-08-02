@@ -104,6 +104,10 @@ mod imp {
         pub chips: RefCell<Vec<(Channel, gtk::Button)>>,
         /// Ticks once a second to advance the mix progress bar.
         pub progress_tick: RefCell<Option<glib::SourceId>>,
+        /// Bumped by every play or stop request. The entitlement check for a
+        /// premium stream is asynchronous, so its result has to be discarded if
+        /// the user has since stopped or picked another channel.
+        pub playback_generation: Cell<u64>,
     }
 
     #[glib::object_subclass]
@@ -552,10 +556,20 @@ impl FriskyWindow {
         };
 
         if player.is_active() {
+            // Also invalidates any entitlement check still in flight, so a
+            // stream cannot start moments after the user asked it to stop.
+            self.next_generation();
             player.stop();
         } else {
             self.start_playback();
         }
+    }
+
+    /// Invalidates any in-flight playback request and returns the new token.
+    fn next_generation(&self) -> u64 {
+        let generation = self.imp().playback_generation.get().wrapping_add(1);
+        self.imp().playback_generation.set(generation);
+        generation
     }
 
     fn start_playback(&self) {
@@ -564,6 +578,7 @@ impl FriskyWindow {
             return;
         };
 
+        let generation = self.next_generation();
         let channel = imp.selected.get();
         let quality = self.quality();
         let token = imp.token.borrow().clone();
@@ -586,6 +601,10 @@ impl FriskyWindow {
                 let Some(window) = window.upgrade() else {
                     return;
                 };
+                // Stopped, or moved to another channel, while the check was out.
+                if window.imp().playback_generation.get() != generation {
+                    return;
+                }
                 let Some(player) = window.imp().player.borrow().clone() else {
                     return;
                 };
@@ -874,6 +893,18 @@ impl FriskyWindow {
 
     pub fn toggle_playback_external(&self) {
         self.toggle_playback();
+    }
+
+    /// Stops playback, cancelling any entitlement check still in flight.
+    ///
+    /// MPRIS Pause and Stop both land here rather than on the player directly,
+    /// so a stop from the desktop cancels a pending request the same way the
+    /// in-app button does.
+    pub fn stop_playback_external(&self) {
+        self.next_generation();
+        if let Some(player) = self.imp().player.borrow().as_ref() {
+            player.stop();
+        }
     }
 
     pub fn start_playback_external(&self) {

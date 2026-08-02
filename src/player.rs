@@ -233,13 +233,12 @@ impl Player {
                 if changed.src() != Some(self.playbin.upcast_ref()) {
                     return;
                 }
-                match changed.current() {
-                    gst::State::Playing => {
-                        self.retries.set(0);
-                        self.set_state(PlayerState::Playing);
-                    }
-                    gst::State::Null => self.set_state(PlayerState::Stopped),
-                    _ => {}
+                // Only Playing is observable here: a pipeline flushes its bus
+                // on the way down to Null, so that transition is never
+                // delivered. `stop()` sets the stopped state directly instead.
+                if changed.current() == gst::State::Playing {
+                    self.retries.set(0);
+                    self.set_state(PlayerState::Playing);
                 }
             }
             MessageView::Element(element) => {

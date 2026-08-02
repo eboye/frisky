@@ -147,6 +147,15 @@ impl FriskyMpris {
         builder.length(Time::ZERO).build()
     }
 
+    /// Stops through the window so a pending entitlement check is cancelled
+    /// too, falling back to the player if the window has already gone.
+    fn stop_playback(&self) {
+        match self.window() {
+            Some(window) => window.stop_playback_external(),
+            None => self.player.stop(),
+        }
+    }
+
     fn step_channel(&self, offset: isize) -> fdo::Result<()> {
         if let Some(window) = self.window() {
             window.step_channel(offset);
@@ -224,7 +233,7 @@ impl LocalPlayerInterface for FriskyMpris {
     async fn pause(&self) -> fdo::Result<()> {
         // Stop rather than pause: a paused live stream would resume minutes
         // behind live.
-        self.player.stop();
+        self.stop_playback();
         Ok(())
     }
 
@@ -236,7 +245,7 @@ impl LocalPlayerInterface for FriskyMpris {
     }
 
     async fn stop(&self) -> fdo::Result<()> {
-        self.player.stop();
+        self.stop_playback();
         Ok(())
     }
 

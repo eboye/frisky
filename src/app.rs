@@ -31,6 +31,10 @@ mod imp {
     #[derive(Default)]
     pub struct FriskyApplication {
         pub window: RefCell<Option<FriskyWindow>>,
+        /// Held so the pipeline can be torn down on the way out. The MPRIS
+        /// server keeps its own reference for the process's lifetime, so
+        /// `Drop` alone would never run.
+        pub player: RefCell<Option<std::rc::Rc<Player>>>,
     }
 
     #[glib::object_subclass]
@@ -76,6 +80,15 @@ mod imp {
             *self.window.borrow_mut() = Some(window.clone());
             window.present();
         }
+
+        fn shutdown(&self) {
+            // Leaves the audio device released rather than relying on process
+            // teardown to do it.
+            if let Some(player) = self.player.borrow().as_ref() {
+                player.stop();
+            }
+            self.parent_shutdown();
+        }
     }
 
     impl GtkApplicationImpl for FriskyApplication {}
@@ -109,6 +122,7 @@ impl FriskyApplication {
 
         let client = FriskyClient::new()?;
         let player = Player::new(sender.clone())?;
+        *self.imp().player.borrow_mut() = Some(player.clone());
         let settings = gio::Settings::new(APP_ID);
 
         let refresh = {
@@ -146,13 +160,26 @@ impl FriskyApplication {
             .activate(|app: &Self, _, _| app.present_about())
             .build();
 
-        self.add_action_entries([quit, about]);
+        // Named by the notification's default action. GApplication does not
+        // register this itself, so without it clicking a mix notification
+        // resolves to nothing at all.
+        let activate = gio::ActionEntry::builder("activate")
+            .activate(|app: &Self, _, _| {
+                if let Some(window) = app.window() {
+                    window.present();
+                }
+            })
+            .build();
+
+        self.add_action_entries([quit, about, activate]);
 
         self.set_accels_for_action("app.quit", &["<primary>q"]);
         self.set_accels_for_action("win.toggle-playback", &["space", "<primary>p"]);
         self.set_accels_for_action("win.refresh", &["<primary>r", "F5"]);
         self.set_accels_for_action("win.preferences", &["<primary>comma"]);
         self.set_accels_for_action("win.compact", &["<primary>m"]);
+        self.set_accels_for_action("win.next-channel", &["<primary>n"]);
+        self.set_accels_for_action("win.show-help-overlay", &["<primary>question"]);
     }
 
     pub fn window(&self) -> Option<FriskyWindow> {
