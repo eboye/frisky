@@ -157,6 +157,22 @@
                             <property name="halign">center</property>
                             <property name="valign">center</property>
                             <child>
+                              <object class="GtkScaleButton" id="volume_button">
+                                <property name="valign">center</property>
+                                <style><class name="transport-side"/></style>
+                                <property name="tooltip-text" translatable="yes">Volume</property>
+                                <property name="adjustment">
+                                  <object class="GtkAdjustment">
+                                    <property name="lower">0.0</property>
+                                    <property name="upper">1.0</property>
+                                    <property name="value">1.0</property>
+                                    <property name="step-increment">0.02</property>
+                                    <property name="page-increment">0.1</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </child>
+                            <child>
                               <object class="GtkButton" id="play_button">
                                 <property name="tooltip-text" translatable="yes">Play</property>
                                 <property name="valign">center</property>
@@ -194,19 +210,18 @@
                                 </property>
                               </object>
                             </child>
+
                             <child>
-                              <object class="GtkScaleButton" id="volume_button">
+                              <object class="GtkButton" id="next_button">
+                                <property name="icon-name">media-skip-forward-symbolic</property>
+                                <property name="tooltip-text" translatable="yes">Next Channel</property>
                                 <property name="valign">center</property>
-                                <property name="tooltip-text" translatable="yes">Volume</property>
-                                <property name="adjustment">
-                                  <object class="GtkAdjustment">
-                                    <property name="lower">0.0</property>
-                                    <property name="upper">1.0</property>
-                                    <property name="value">1.0</property>
-                                    <property name="step-increment">0.02</property>
-                                    <property name="page-increment">0.1</property>
-                                  </object>
-                                </property>
+                                <property name="action-name">win.next-channel</property>
+                                <style>
+                                  <class name="flat"/>
+                                  <class name="circular"/>
+                                  <class name="transport-side"/>
+                                </style>
                               </object>
                             </child>
                           </object>

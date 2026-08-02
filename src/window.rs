@@ -221,11 +221,15 @@ impl FriskyWindow {
             .activate(|window: &Self, _, _| window.present_preferences())
             .build();
 
+        let next_channel = gio::ActionEntry::builder("next-channel")
+            .activate(|window: &Self, _, _| window.step_channel(1))
+            .build();
+
         let compact = gio::ActionEntry::builder("compact")
             .activate(|window: &Self, _, _| window.toggle_compact())
             .build();
 
-        self.add_action_entries([toggle, refresh, preferences, compact]);
+        self.add_action_entries([toggle, refresh, preferences, compact, next_channel]);
     }
 
     /// Builds a visualiser for each layout.
@@ -811,6 +815,19 @@ impl FriskyWindow {
     /// Switches channel and starts playing it.
     pub fn activate_channel(&self, channel: Channel) {
         self.select_channel(channel, true);
+    }
+
+    /// Moves `offset` channels from the current one, wrapping around.
+    ///
+    /// Shared by the transport's next button and MPRIS Next/Previous, so the
+    /// two cannot drift apart.
+    pub fn step_channel(&self, offset: isize) {
+        let current = self.imp().selected.get();
+        let count = Channel::ALL.len() as isize;
+        let index = Channel::ALL.iter().position(|c| *c == current).unwrap_or(0) as isize;
+
+        let next = Channel::ALL[(index + offset).rem_euclid(count) as usize];
+        self.select_channel(next, true);
     }
 
     pub fn toggle_playback_external(&self) {

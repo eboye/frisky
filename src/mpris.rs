@@ -147,17 +147,10 @@ impl FriskyMpris {
         builder.length(Time::ZERO).build()
     }
 
-    /// Moves `offset` channels from the current one, wrapping around.
     fn step_channel(&self, offset: isize) -> fdo::Result<()> {
-        let Some(window) = self.window() else {
-            return Ok(());
-        };
-        let current = window.selected_channel();
-        let count = Channel::ALL.len() as isize;
-        let index = Channel::ALL.iter().position(|c| *c == current).unwrap_or(0) as isize;
-
-        let next = Channel::ALL[((index + offset).rem_euclid(count)) as usize];
-        window.activate_channel(next);
+        if let Some(window) = self.window() {
+            window.step_channel(offset);
+        }
         Ok(())
     }
 }
