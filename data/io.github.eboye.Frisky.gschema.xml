@@ -27,6 +27,16 @@
       </description>
     </key>
 
+    <key name="notify-mix-change" type="b">
+      <default>true</default>
+      <summary>Notify when the mix changes</summary>
+      <description>
+        Show a desktop notification when a new mix starts on the channel being
+        listened to. Mixes change roughly hourly; live radio carries no
+        per-track information, so this cannot fire per track.
+      </description>
+    </key>
+
     <key name="quality" enum="io.github.eboye.Frisky.Quality">
       <default>'low'</default>
       <summary>Preferred audio quality</summary>

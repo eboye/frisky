@@ -836,6 +836,17 @@ impl FriskyWindow {
     }
 
     fn notify_now_playing(&self) {
+        let enabled = self
+            .imp()
+            .settings
+            .borrow()
+            .as_ref()
+            .map(|settings| settings.boolean("notify-mix-change"))
+            .unwrap_or(true);
+        if !enabled {
+            return;
+        }
+
         // Only worth interrupting for if the user is actually listening.
         let playing = self
             .imp()

@@ -368,11 +368,24 @@
                                   </object>
                                 </child>
 
+                                <!-- Our own close button rather than
+                                     GtkWindowControls: that widget declines to
+                                     render close here even with the decoration
+                                     layout pinned, which would leave the mini
+                                     player with no way to shut it. Minimise and
+                                     maximise are noise at this size — the menu
+                                     restores the full window. -->
                                 <child>
-                                  <object class="GtkWindowControls">
-                                    <property name="side">end</property>
+                                  <object class="GtkButton" id="compact_close_button">
+                                    <property name="icon-name">window-close-symbolic</property>
+                                    <property name="tooltip-text" translatable="yes">Close</property>
                                     <property name="valign">center</property>
-                                    <style><class name="compact-controls"/></style>
+                                    <property name="action-name">window.close</property>
+                                    <style>
+                                      <class name="flat"/>
+                                      <class name="compact-titlebutton"/>
+                                      <class name="compact-close"/>
+                                    </style>
                                   </object>
                                 </child>
                               </object>

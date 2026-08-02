@@ -20,6 +20,16 @@ Built with GTK4, libadwaita and GStreamer.
 
 ---
 
+<div align="center">
+
+<img src="data/screenshots/full.png" width="380" alt="The full window: cover art with the live visualiser over it, the mix currently on air, and the four channel pills">
+
+<br><br>
+
+<img src="data/screenshots/mini.png" width="560" alt="The mini player: one gradient row with cover, visualiser, track, mix progress and channel chips">
+
+</div>
+
 ## Features
 
 - **All four channels** — Frisky, Deep, Chill and Classics, each in its own brand gradient
@@ -29,7 +39,7 @@ Built with GTK4, libadwaita and GStreamer.
 - **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — one row: the whole window becomes the channel
   gradient, the title bar folds into it, and cover, visualiser, track, mix progress, channel chips
   and window controls all sit on the same line
-- **Notifications** when the mix changes
+- **Notifications** when the mix changes, switchable off in Preferences
 - Follows the system light/dark preference, and remembers your channel and volume
 
 ## Install

@@ -53,6 +53,17 @@
     <control>touch</control>
   </supports>
 
+  <screenshots>
+    <screenshot type="default">
+      <caption>The mix currently on air, with the live visualiser over its cover art</caption>
+      <image>https://raw.githubusercontent.com/eboye/frisky/main/data/screenshots/full.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The mini player, with mix progress and channel chips</caption>
+      <image>https://raw.githubusercontent.com/eboye/frisky/main/data/screenshots/mini.png</image>
+    </screenshot>
+  </screenshots>
+
   <content_rating type="oars-1.1">
     <content_attribute id="social-audio">intense</content_attribute>
   </content_rating>

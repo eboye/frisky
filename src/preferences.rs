@@ -24,8 +24,28 @@ fn audio_page(window: &FriskyWindow, settings: &gio::Settings) -> adw::Preferenc
         .build();
 
     page.add(&quality_group(settings));
+    page.add(&notification_group(settings));
     page.add(&account_group(window));
     page
+}
+
+fn notification_group(settings: &gio::Settings) -> adw::PreferencesGroup {
+    let group = adw::PreferencesGroup::builder()
+        .title("Notifications")
+        .build();
+
+    let row = adw::SwitchRow::builder()
+        .title("Mix Changes")
+        .subtitle(
+            "Notify when a new mix starts. Live radio has no per-track \
+             information, so this cannot fire per track.",
+        )
+        .build();
+
+    settings.bind("notify-mix-change", &row, "active").build();
+
+    group.add(&row);
+    group
 }
 
 fn quality_group(settings: &gio::Settings) -> adw::PreferencesGroup {

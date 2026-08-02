@@ -241,8 +241,8 @@
 }
 
 /* Close keeps its destructive tint so it stays distinguishable. */
-.compact-mode windowcontrols button.close:hover {
-  background-color: alpha(#e01b24, 0.85);
+.compact-close:hover {
+  background-color: alpha(#e01b24, 0.9);
 }
 
 .compact-art {
