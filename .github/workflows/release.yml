@@ -132,10 +132,19 @@ jobs:
         with:
           path: artifacts
 
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/release-body.md
+          sparse-checkout-cone-mode: false
+
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          # A written intro with screenshots and install steps, followed by the
+          # generated commit list — a bare changelog makes a poor landing page.
+          body_path: .github/release-body.md
+          append_body: true
           generate_release_notes: true
           files: |
             artifacts/flatpak/frisky.flatpak
