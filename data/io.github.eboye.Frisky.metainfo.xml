@@ -69,6 +69,19 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.5" date="2026-08-02">
+      <description>
+        <ul>
+          <li>Clicking a mix notification now opens the player instead of doing nothing</li>
+          <li>The Keyboard Shortcuts window works, and Ctrl+N skips to the next channel</li>
+          <li>Stopping or switching channel during a premium quality check is no longer overridden a moment later</li>
+          <li>A change on FRISKY's side can no longer leave every channel blank at once</li>
+          <li>Now playing keeps updating after the machine wakes from suspend</li>
+          <li>Cover art no longer accumulates on disk without limit</li>
+          <li>The audio device is released properly when the app quits</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-08-02">
       <description>
         <ul>

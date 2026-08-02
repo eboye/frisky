@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Advisories land against dependencies that were fine when they merged, so
+  # the audit below has to run on a clock as well as on changes.
+  schedule:
+    - cron: "0 6 * * 1"
 
 env:
   CARGO_TERM_COLOR: always
@@ -81,6 +85,31 @@ jobs:
           bundle: frisky.flatpak
           manifest-path: build-aux/io.github.eboye.Frisky.json
           cache-key: flatpak-builder-${{ github.sha }}
+
+  audit:
+    name: Audit dependencies
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-${{ runner.os }}
+
+      - name: Install cargo-audit
+        run: command -v cargo-audit || cargo install cargo-audit --locked
+
+      # Fails on a vulnerability, not on merely unmaintained crates: the latter
+      # is common in the GTK stack and is not something a release should stop
+      # for. Deliberately not part of the release workflow, so an advisory
+      # published mid-incident cannot block shipping the fix for it.
+      - name: Audit
+        run: cargo audit
 
   metadata:
     name: Validate metadata

@@ -2,19 +2,42 @@
 
 use adw::prelude::*;
 use gtk::{gio, glib};
+use std::cell::RefCell;
 use tracing::warn;
 
 use crate::audio;
 use crate::channel::Quality;
 use crate::window::FriskyWindow;
 
+thread_local! {
+    /// The preferences dialog currently on screen, if any.
+    ///
+    /// Held weakly so it is not kept alive past its close. Asking for
+    /// preferences again — from the menu and the accelerator both — should
+    /// raise the one already up rather than stack a second one behind it.
+    static OPEN_DIALOG: RefCell<Option<glib::WeakRef<adw::PreferencesDialog>>> =
+        const { RefCell::new(None) };
+}
+
 pub fn present(window: &FriskyWindow) {
+    let existing = OPEN_DIALOG.with(|slot| slot.borrow().as_ref().and_then(|open| open.upgrade()));
+    if let Some(dialog) = existing {
+        adw::prelude::AdwDialogExt::present(&dialog, Some(window));
+        return;
+    }
+
     let settings = gio::Settings::new(crate::app::APP_ID);
 
     let dialog = adw::PreferencesDialog::builder()
         .title("Preferences")
         .build();
     dialog.add(&audio_page(window, &settings));
+
+    dialog.connect_closed(|_| {
+        OPEN_DIALOG.with(|slot| *slot.borrow_mut() = None);
+    });
+    OPEN_DIALOG.with(|slot| *slot.borrow_mut() = Some(dialog.downgrade()));
+
     adw::prelude::AdwDialogExt::present(&dialog, Some(window));
 }
 
@@ -226,14 +249,25 @@ fn present_login(window: &FriskyWindow, row: &adw::ActionRow, button: &gtk::Butt
         if response != "login" {
             return;
         }
-        let email = email.text().trim().to_owned();
-        let password = password.text().to_string();
+        let email_text = email.text().trim().to_owned();
+        let password_text = password.text().to_string();
 
-        if email.is_empty() || password.is_empty() {
+        if email_text.is_empty() || password_text.is_empty() {
             window.toast("Enter both an email address and a password.");
             return;
         }
+
+        // Blank the entries before anything can await. The dialog is about to
+        // close, but a closed AdwDialog is not necessarily finalised, and there
+        // is no reason for the credentials to outlive the request that uses
+        // them. This does not reach the copies serde_json and reqwest make on
+        // the way out — that is not reachable from here — but it does stop the
+        // password sitting in a live widget buffer afterwards.
+        email.set_text("");
+        password.set_text("");
         dialog.close();
+
+        let (email, password) = (email_text, password_text);
 
         let window = window.clone();
         let row = row.clone();
