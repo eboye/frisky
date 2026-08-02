@@ -60,8 +60,9 @@ chmod +x Frisky-*-x86_64.AppImage
 ./Frisky-*-x86_64.AppImage
 ```
 
-Needs GTK 4.12+, libadwaita 1.5+ and the GStreamer plugin sets from your distro.
-If those are missing, use the Flatpak — it carries its own.
+Self-contained: GTK, libadwaita and GStreamer are bundled, so nothing needs to be
+installed. It does require glibc 2.39 or newer, since it is built on Ubuntu
+24.04 — on an older distribution, use the Flatpak.
 
 ### Binary tarball
 

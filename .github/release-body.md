@@ -21,8 +21,8 @@ flatpak install --user frisky.flatpak
 flatpak run io.github.eboye.Frisky
 ```
 
-**AppImage** — needs GTK 4.12+, libadwaita 1.5+ and the GStreamer plugin sets
-from your distribution. It bundles the app, not the toolkit.
+**AppImage** — self-contained. GTK, libadwaita and GStreamer are bundled, so
+nothing needs installing. Requires glibc 2.39 or newer.
 
 ```sh
 chmod +x Frisky-*-x86_64.AppImage

@@ -54,8 +54,8 @@ jobs:
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
             gstreamer1.0-plugins-bad gstreamer1.0-libav \
             desktop-file-utils appstream librsvg2-bin \
-            libglib2.0-bin \
-            fuse libfuse2
+            libglib2.0-bin patchelf \
+            libgdk-pixbuf2.0-bin librsvg2-common \
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -94,26 +94,50 @@ jobs:
             "dist/frisky-${{ steps.version.outputs.version }}-x86_64-linux.tar.gz" .
 
       - name: Build AppImage
+        # Bundles GTK, libadwaita and GStreamer so the AppImage runs without
+        # those installed on the host.
+        env:
+          DEPLOY_GTK_VERSION: "4"
         run: |
-          curl -fsSL -o appimagetool \
-            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool
+          curl -fsSL -o linuxdeploy \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o linuxdeploy-plugin-gtk \
+            https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh
+          curl -fsSL -o linuxdeploy-plugin-gstreamer \
+            https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gstreamer/master/linuxdeploy-plugin-gstreamer.sh
+          chmod +x linuxdeploy linuxdeploy-plugin-gtk linuxdeploy-plugin-gstreamer
+          # linuxdeploy resolves --plugin names from PATH.
+          export PATH="$PWD:$PATH"
 
-          cat > AppDir/AppRun <<'EOF'
-          #!/bin/sh
-          # Resolve the AppDir even when invoked through a symlink.
-          HERE="$(dirname "$(readlink -f "$0")")"
-          export PATH="$HERE/usr/bin:$PATH"
-          export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
-          # The bundled GSettings schema must be findable, or gio aborts.
-          export GSETTINGS_SCHEMA_DIR="$HERE/usr/share/glib-2.0/schemas"
-          export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-          exec "$HERE/usr/bin/frisky-gtk" "$@"
-          EOF
-          chmod +x AppDir/AppRun
+          ./linuxdeploy --appimage-extract-and-run \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/frisky-gtk \
+            --desktop-file AppDir/usr/share/applications/io.github.eboye.Frisky.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/io.github.eboye.Frisky.svg \
+            --plugin gtk --plugin gstreamer
 
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir \
+          # The plugins target GTK3 and Debian's multiarch paths; this corrects
+          # both. Must land after they run, hence the name and the second pass.
+          install -Dm755 build-aux/appimage-apprun-hook.sh \
+            AppDir/apprun-hooks/zz-frisky-fixups.sh
+
+          ./linuxdeploy --appimage-extract-and-run --appdir AppDir --output appimage
+
+          mkdir -p dist
+          mv Frisky*.AppImage \
             "dist/Frisky-${{ steps.version.outputs.version }}-x86_64.AppImage"
+
+      - name: Check the AppImage is self-contained
+        run: |
+          # A stale GTK_THEME or a dead scanner path would ship silently, so
+          # assert on the packaged hook rather than trusting the plugins.
+          ./dist/Frisky-*-x86_64.AppImage --appimage-extract >/dev/null
+          grep -q "unset GTK_THEME" squashfs-root/apprun-hooks/zz-frisky-fixups.sh
+          test -x squashfs-root/usr/lib/gstreamer-1.0/gst-plugin-scanner
+          test -f squashfs-root/usr/lib/libgtk-4.so.1
+          test -f squashfs-root/usr/lib/libadwaita-1.so.0
+          echo "GTK, libadwaita and the GStreamer scanner are all bundled"
+          rm -rf squashfs-root
 
       - uses: actions/upload-artifact@v4
         with:
