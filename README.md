@@ -245,13 +245,22 @@ Background work runs on a tokio runtime and reaches the GTK main loop as
 
 ## Platform support
 
-Linux only. Frisky is built on GTK4, libadwaita, MPRIS and the Secret Service,
-and it targets the GNOME desktop.
+**Linux, x86_64.** Frisky is built on GTK4, libadwaita, MPRIS and the Secret
+Service, and it targets the GNOME desktop.
 
-macOS and Windows are not planned. For macOS specifically, the groundwork has
-been analysed in [docs/MACOS.md](docs/MACOS.md) so that anyone who wants to
-attempt it does not have to start from scratch — see the
-[tracking issue](https://github.com/eboye/frisky/issues/1).
+Other platforms are not planned, but the groundwork has been analysed so nobody
+has to start from scratch:
+
+| Platform | Status | |
+|---|---|---|
+| **ChromeOS** | Should already work through Crostini — unverified, and no ARM builds are published | [docs/CHROMEOS.md](docs/CHROMEOS.md) · [#3](https://github.com/eboye/frisky/issues/3) |
+| **Windows** | A real port. The more tractable of the two — no notarization to fight | [docs/WINDOWS.md](docs/WINDOWS.md) · [#2](https://github.com/eboye/frisky/issues/2) |
+| **macOS** | A real port, and the harder one | [docs/MACOS.md](docs/MACOS.md) · [#1](https://github.com/eboye/frisky/issues/1) |
+
+Contributions are welcome on all three; none is on the roadmap. **aarch64 Linux
+builds** — which would serve ARM Chromebooks, Raspberry Pi and Asahi alike — are
+tracked in [#3](https://github.com/eboye/frisky/issues/3) and need no
+non-Linux hardware to implement.
 
 ## Contributing
 
