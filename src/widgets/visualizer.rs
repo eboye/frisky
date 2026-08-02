@@ -143,14 +143,16 @@ impl VisualizerSize {
         scrim: true,
     };
 
-    /// Over the small cover in the compact bar.
-    pub const COMPACT: Self = Self {
-        bars: 11,
-        width: 44,
-        height: 44,
-        gap: 2.0,
-        scale: 0.8,
-        scrim: true,
+    /// Spans the whole mini player as a faint backdrop layer. Drawn at low
+    /// opacity in CSS, so it carries no scrim of its own — the gradient tint
+    /// underneath already handles legibility.
+    pub const COMPACT_BACKDROP: Self = Self {
+        bars: 48,
+        width: 400,
+        height: 76,
+        gap: 3.0,
+        scale: 0.92,
+        scrim: false,
     };
 }
 

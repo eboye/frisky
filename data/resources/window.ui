@@ -268,10 +268,41 @@
                            handle. -->
                       <object class="GtkWindowHandle">
                         <property name="child">
-                          <object class="GtkBox" id="compact_view">
-                            <property name="orientation">vertical</property>
-                            <property name="valign">center</property>
-                            <child>
+                          <!-- Layer stack, bottom to top: blurred cover, the
+                               channel gradient over it, the visualiser faint
+                               above that, then the controls. -->
+                          <object class="GtkOverlay" id="compact_backdrop">
+                            <!-- Clips the layers to the window's rounded
+                                 corners. `overflow` is a widget property in
+                                 GTK4, not a CSS one. -->
+                            <property name="overflow">hidden</property>
+                            <property name="child">
+                              <object class="GtkPicture" id="compact_backdrop_art">
+                                <property name="content-fit">cover</property>
+                                <property name="can-shrink">True</property>
+                                <property name="hexpand">True</property>
+                                <property name="vexpand">True</property>
+                                <style><class name="compact-backdrop-art"/></style>
+                              </object>
+                            </property>
+
+                            <child type="overlay">
+                              <object class="GtkBox" id="compact_tint">
+                                <property name="hexpand">True</property>
+                                <property name="vexpand">True</property>
+                                <style><class name="compact-tint"/></style>
+                              </object>
+                            </child>
+
+                            <!-- The visualiser is added here in code. -->
+                            <child type="overlay">
+                              <object class="GtkBox" id="compact_visualizer_slot">
+                                <property name="hexpand">True</property>
+                                <property name="vexpand">True</property>
+                              </object>
+                            </child>
+
+                            <child type="overlay">
                               <object class="GtkBox" id="compact_bar">
                                 <style><class name="compact-bar"/></style>
                                 <property name="spacing">10</property>
@@ -284,17 +315,16 @@
                                 <property name="margin-end">6</property>
 
                                 <child>
-                                  <object class="GtkOverlay" id="compact_artwork_overlay">
-                                    <style><class name="compact-art"/></style>
+                                  <object class="GtkPicture" id="compact_artwork">
+                                    <property name="content-fit">cover</property>
+                                    <property name="width-request">44</property>
+                                    <property name="height-request">44</property>
+                                    <property name="can-shrink">True</property>
                                     <property name="valign">center</property>
-                                    <property name="child">
-                                      <object class="GtkPicture" id="compact_artwork">
-                                        <property name="content-fit">cover</property>
-                                        <property name="width-request">44</property>
-                                        <property name="height-request">44</property>
-                                        <property name="can-shrink">True</property>
-                                      </object>
-                                    </property>
+                                    <!-- Rounds the thumbnail itself; nothing is
+                                         drawn over it. -->
+                                    <property name="overflow">hidden</property>
+                                    <style><class name="compact-art"/></style>
                                   </object>
                                 </child>
 
@@ -368,8 +398,6 @@
                                   </object>
                                 </child>
 
-                                <!-- The header bar's menu and window controls,
-                                     folded into the row. -->
                                 <child>
                                   <object class="GtkMenuButton" id="compact_menu_button">
                                     <property name="icon-name">view-more-symbolic</property>
@@ -383,13 +411,6 @@
                                   </object>
                                 </child>
 
-                                <!-- Our own close button rather than
-                                     GtkWindowControls: that widget declines to
-                                     render close here even with the decoration
-                                     layout pinned, which would leave the mini
-                                     player with no way to shut it. Minimise and
-                                     maximise are noise at this size — the menu
-                                     restores the full window. -->
                                 <child>
                                   <object class="GtkButton" id="compact_close_button">
                                     <property name="icon-name">window-close-symbolic</property>

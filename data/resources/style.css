@@ -192,23 +192,49 @@
 
 /* ---------------------------------------------------------- compact player */
 
-/* In mini mode the gradient is the whole window rather than a card floating on
- * a themed background, so it goes on the window and everything above it turns
- * transparent. */
-.compact-mode.channel-frisky {
+/* The mini player is a stack of layers, bottom to top: the cover art blurred
+ * across the whole window, the channel gradient over it, the visualiser faint
+ * above that, then the controls.
+ *
+ * The window keeps the gradient as an opaque base so the tint has something to
+ * sit on before any artwork has loaded. */
+.compact-mode.channel-frisky,
+.compact-tint.channel-frisky {
   background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
 }
 
-.compact-mode.channel-deep {
+.compact-mode.channel-deep,
+.compact-tint.channel-deep {
   background-image: linear-gradient(140.28deg, #be24e9, #410cc1);
 }
 
-.compact-mode.channel-chill {
+.compact-mode.channel-chill,
+.compact-tint.channel-chill {
   background-image: linear-gradient(144.39deg, #0ad8ff, #0278ff);
 }
 
-.compact-mode.channel-classics {
+.compact-mode.channel-classics,
+.compact-tint.channel-classics {
   background-image: linear-gradient(144.39deg, #2c2c2c, #000);
+}
+
+/* Blurred so it reads as colour and shape rather than a picture competing with
+ * the text. Scaled up slightly so the blur has no soft edge at the border. */
+.compact-backdrop-art {
+  filter: blur(18px);
+  transform: scale(1.15);
+  opacity: 0.9;
+}
+
+/* Enough gradient to keep the channel identity and the text legible, but not so
+ * much that the artwork stops showing through. */
+.compact-tint {
+  opacity: 0.75;
+}
+
+/* A texture behind the controls rather than a foreground element. */
+.compact-mode .visualizer {
+  opacity: 0.13;
 }
 
 /* Let the window's gradient through every layer between it and the bar. */

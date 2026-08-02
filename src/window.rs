@@ -61,7 +61,11 @@ mod imp {
         #[template_child]
         pub compact_bar: TemplateChild<gtk::Box>,
         #[template_child]
-        pub compact_artwork_overlay: TemplateChild<gtk::Overlay>,
+        pub compact_backdrop_art: TemplateChild<gtk::Picture>,
+        #[template_child]
+        pub compact_tint: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub compact_visualizer_slot: TemplateChild<gtk::Box>,
         #[template_child]
         pub compact_artwork: TemplateChild<gtk::Picture>,
         #[template_child]
@@ -250,15 +254,13 @@ impl FriskyWindow {
         hover.connect_leave(move |_| restored.set_faded(false));
         imp.artwork_overlay.add_controller(hover);
 
-        let compact = Rc::new(Visualizer::new(VisualizerSize::COMPACT));
-        imp.compact_artwork_overlay.add_overlay(compact.widget());
-
-        let hover = gtk::EventControllerMotion::new();
-        let faded = compact.clone();
-        hover.connect_enter(move |_, _, _| faded.set_faded(true));
-        let restored = compact.clone();
-        hover.connect_leave(move |_| restored.set_faded(false));
-        imp.compact_artwork_overlay.add_controller(hover);
+        // The mini player's visualiser is a backdrop layer spanning the whole
+        // window, not something drawn over the thumbnail. It sits at low
+        // opacity behind the controls, so there is nothing to reveal on hover.
+        let compact = Rc::new(Visualizer::new(VisualizerSize::COMPACT_BACKDROP));
+        compact.widget().set_hexpand(true);
+        compact.widget().set_vexpand(true);
+        imp.compact_visualizer_slot.append(compact.widget());
 
         *imp.visualizers.borrow_mut() = vec![cover, compact];
     }
@@ -285,11 +287,11 @@ impl FriskyWindow {
 
         for other in Channel::ALL {
             imp.play_button.remove_css_class(other.css_class());
-            imp.compact_bar.remove_css_class(other.css_class());
+            imp.compact_tint.remove_css_class(other.css_class());
             self.remove_css_class(other.css_class());
         }
         imp.play_button.add_css_class(channel.css_class());
-        imp.compact_bar.add_css_class(channel.css_class());
+        imp.compact_tint.add_css_class(channel.css_class());
         self.add_css_class(channel.css_class());
     }
 
@@ -732,6 +734,7 @@ impl FriskyWindow {
             Ok(texture) => {
                 imp.artwork.set_paintable(Some(&texture));
                 imp.compact_artwork.set_paintable(Some(&texture));
+                imp.compact_backdrop_art.set_paintable(Some(&texture));
                 imp.artwork_overlay.add_css_class("has-art");
             }
             Err(error) => warn!("could not decode artwork for show {show_id}: {error}"),
