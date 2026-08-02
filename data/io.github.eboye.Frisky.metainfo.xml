@@ -69,6 +69,15 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.2" date="2026-08-02">
+      <description>
+        <ul>
+          <li>The AppImage is now self-contained: GTK, libadwaita and GStreamer are bundled, so nothing needs installing</li>
+          <li>The mini player is layered over the cover art, blurred, beneath the channel gradient and the visualiser</li>
+          <li>A next-channel button, with the transport row balanced around play</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-08-02">
       <description>
         <ul>
