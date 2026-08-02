@@ -113,11 +113,14 @@ sudo pacman -S gtk4 libadwaita gst-plugins-base gst-plugins-good \
 flatpak install flathub org.gnome.Platform//49 org.gnome.Sdk//49 \
     org.freedesktop.Sdk.Extension.rust-stable//25.08
 
-# Build outside the source tree: flatpak-builder's output contains a symlink
-# to /run, and cargo walks itself into filesystem loops if it lives here.
-# The state dir has to move too — it must share a filesystem with the target.
+# Build outside the source tree: flatpak-builder's output contains a symlink to
+# /run, and cargo walks itself into filesystem loops if it lives here. The state
+# dir has to move with it — flatpak-builder requires both on one filesystem.
+#
+# Not /tmp: on many systems that is a RAM-backed tmpfs, and a cargo release
+# build there will exhaust memory and fill it. Use real disk.
 flatpak-builder --user --install --force-clean \
-    --state-dir=/tmp/frisky-state /tmp/frisky-build \
+    --state-dir=~/.cache/frisky-flatpak/state ~/.cache/frisky-flatpak/build \
     build-aux/io.github.eboye.Frisky.json
 ```
 
