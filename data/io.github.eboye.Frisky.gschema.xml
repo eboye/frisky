@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <enum id="io.github.eboye.Frisky.Quality">
+    <value nick="low" value="0"/>
+    <value nick="high" value="1"/>
+    <value nick="hifi" value="2"/>
+  </enum>
+
+  <schema id="io.github.eboye.Frisky" path="/io/github/eboye/Frisky/">
+    <key name="last-channel" type="s">
+      <default>'frisky'</default>
+      <summary>Last selected channel</summary>
+      <description>
+        Station id of the channel selected when the app was last closed. One of
+        frisky, deep, chill or classics. An unrecognised value falls back to
+        frisky.
+      </description>
+    </key>
+
+    <key name="volume" type="d">
+      <default>1.0</default>
+      <range min="0.0" max="1.0"/>
+      <summary>Playback volume</summary>
+      <description>
+        Volume on a perceptual scale from 0.0 to 1.0. Mapped cubically onto the
+        pipeline's linear gain.
+      </description>
+    </key>
+
+    <key name="quality" enum="io.github.eboye.Frisky.Quality">
+      <default>'low'</default>
+      <summary>Preferred audio quality</summary>
+      <description>
+        Stream bitrate to request. Anything above 'low' (96 kbps) requires a
+        FRISKY subscription; without one the app falls back to 'low'.
+      </description>
+    </key>
+  </schema>
+</schemalist>

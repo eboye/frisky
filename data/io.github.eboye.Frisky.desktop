@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Frisky
+GenericName=Internet Radio
+Comment=Listen to FRISKY Radio channels
+Exec=frisky-gtk
+Icon=io.github.eboye.Frisky
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;AudioVideo;Audio;Player;
+Keywords=radio;music;stream;electronic;house;techno;frisky;
+StartupNotify=true
+DBusActivatable=true
+X-GNOME-UsesNotifications=true

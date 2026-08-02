@@ -1,0 +1,297 @@
+/* FRISKY brand styling.
+ *
+ * Gradient stops and the accent colour are taken from frisky.fm's own
+ * stylesheet so the app reads as part of the same family. Surfaces follow the
+ * system light/dark preference; the gradients are identical in both, because
+ * they are the brand and should not shift with the theme.
+ */
+
+:root {
+  --frisky-accent: #ed0756;
+  --frisky-surface-dark: #0e1013;
+  --frisky-surface-dark-2: #1b1c21;
+}
+
+/* ---------------------------------------------------------------- artwork */
+
+.artwork {
+  border-radius: 16px;
+  background: linear-gradient(144.39deg, #2c2c2c, #000);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    0 14px 34px rgba(0, 0, 0, 0.32);
+}
+
+.artwork picture {
+  border-radius: 16px;
+}
+
+/* Sits behind the picture and shows through only while artwork is absent. */
+.artwork-placeholder {
+  color: alpha(#ffffff, 0.35);
+}
+
+.artwork.has-art .artwork-placeholder {
+  opacity: 0;
+}
+
+/* -------------------------------------------------------------- transport */
+
+.play-button {
+  min-width: 64px;
+  min-height: 64px;
+  padding: 0;
+  color: #ffffff;
+  background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
+  box-shadow: 0 2px 8px alpha(#ed0756, 0.35);
+  transition: filter 150ms ease, box-shadow 150ms ease;
+}
+
+.play-button:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 3px 14px alpha(#ed0756, 0.5);
+}
+
+.play-button:active {
+  filter: brightness(0.94);
+}
+
+/* The play button adopts the active channel's own gradient. */
+.play-button.channel-frisky {
+  background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
+}
+
+.play-button.channel-deep {
+  background-image: linear-gradient(140.28deg, #be24e9, #410cc1);
+}
+
+.play-button.channel-chill {
+  background-image: linear-gradient(144.39deg, #0ad8ff, #0278ff);
+}
+
+.play-button.channel-classics {
+  background-image: linear-gradient(144.39deg, #4a4a4a, #151515);
+}
+
+/* --------------------------------------------------------- channel pills */
+
+.channel-pill {
+  padding: 0;
+  border-radius: 14px;
+  border: none;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  transition: filter 200ms ease, opacity 200ms ease;
+}
+
+.channel-pill .pill-surface {
+  border-radius: 14px;
+  padding: 12px 16px;
+  min-height: 46px;
+  color: #ffffff;
+}
+
+.channel-pill .pill-name {
+  font-weight: 800;
+  font-size: 1.05rem;
+  /* The wordmark is set wide, matching the site's treatment. */
+  letter-spacing: 0.14em;
+  color: #ffffff;
+}
+
+.channel-pill .pill-tagline {
+  font-size: 0.82rem;
+  color: alpha(#ffffff, 0.78);
+}
+
+.channel-pill .pill-nowplaying {
+  font-size: 0.82rem;
+  color: alpha(#ffffff, 0.9);
+}
+
+/* Unselected channels recede; the active one is at full strength. */
+.channel-pill:not(.selected) .pill-surface {
+  filter: saturate(0.45) brightness(0.72);
+  opacity: 0.75;
+}
+
+.channel-pill:hover:not(.selected) .pill-surface {
+  filter: saturate(0.8) brightness(0.9);
+  opacity: 0.95;
+}
+
+.channel-pill.selected .pill-surface {
+  box-shadow:
+    inset 0 0 0 2px alpha(#ffffff, 0.85),
+    0 4px 16px alpha(#000000, 0.3);
+}
+
+.channel-pill:focus-visible .pill-surface {
+  outline: 2px solid var(--frisky-accent);
+  outline-offset: 2px;
+}
+
+/* The four brand gradients, verified against frisky.fm. */
+.channel-frisky .pill-surface {
+  background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
+}
+
+.channel-deep .pill-surface {
+  background-image: linear-gradient(140.28deg, #be24e9, #410cc1);
+}
+
+.channel-chill .pill-surface {
+  background-image: linear-gradient(144.39deg, #0ad8ff, #0278ff);
+}
+
+.channel-classics .pill-surface {
+  background-image: linear-gradient(144.39deg, #2c2c2c, #000);
+}
+
+/* Classics is near-black, so it needs a visible edge in dark mode. */
+.channel-classics .pill-surface {
+  box-shadow: inset 0 0 0 1px alpha(#ffffff, 0.12);
+}
+
+.channel-classics.selected .pill-surface {
+  box-shadow:
+    inset 0 0 0 2px alpha(#ffffff, 0.85),
+    0 4px 16px alpha(#000000, 0.3);
+}
+
+/* ------------------------------------------------------------- tracklist */
+
+.tracklist-index {
+  font-size: 0.85rem;
+  min-width: 1.6rem;
+  color: alpha(currentColor, 0.55);
+  font-feature-settings: "tnum";
+}
+
+/* ------------------------------------------------------------ visualizer */
+
+/* Live audio drawn over the cover art. It fades out under the pointer so the
+ * artwork is never permanently hidden. */
+.visualizer {
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.visualizer.faded {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------- compact player */
+
+/* A single short gradient bar: visualiser on the left, then the track, then
+ * the channel and transport as chips. Sized for a corner of the screen. */
+.compact-bar {
+  border-radius: 14px;
+  background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 6px 16px rgba(0, 0, 0, 0.24);
+}
+
+.compact-bar.channel-frisky {
+  background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
+}
+
+.compact-bar.channel-deep {
+  background-image: linear-gradient(140.28deg, #be24e9, #410cc1);
+}
+
+.compact-bar.channel-chill {
+  background-image: linear-gradient(144.39deg, #0ad8ff, #0278ff);
+}
+
+.compact-bar.channel-classics {
+  background-image: linear-gradient(144.39deg, #2c2c2c, #000);
+  box-shadow:
+    inset 0 0 0 1px alpha(#ffffff, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.24);
+}
+
+.compact-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+/* Chips and buttons sit on the gradient, so they carry their own contrast
+ * rather than the theme's. */
+.compact-chip {
+  padding: 3px 10px;
+  min-height: 24px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  background-color: alpha(#000000, 0.24);
+  transition: background-color 150ms ease;
+}
+
+.compact-chip:hover {
+  background-color: alpha(#000000, 0.36);
+}
+
+.compact-play {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  color: #ffffff;
+  background-color: alpha(#ffffff, 0.2);
+  transition: background-color 150ms ease;
+}
+
+.compact-play:hover {
+  background-color: alpha(#ffffff, 0.32);
+}
+
+.compact-play:active {
+  background-color: alpha(#ffffff, 0.42);
+}
+
+/* Channel entries in the compact popover: a gradient chip each. */
+.compact-channel-item {
+  min-width: 150px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+}
+
+.compact-channel-item.channel-frisky {
+  background-image: linear-gradient(135deg, #ec9558, #de446d 44.76%, #dd3b6f 64.72%, #9a2977);
+}
+
+.compact-channel-item.channel-deep {
+  background-image: linear-gradient(140.28deg, #be24e9, #410cc1);
+}
+
+.compact-channel-item.channel-chill {
+  background-image: linear-gradient(144.39deg, #0ad8ff, #0278ff);
+}
+
+.compact-channel-item.channel-classics {
+  background-image: linear-gradient(144.39deg, #2c2c2c, #000);
+}
+
+/* ----------------------------------------------------------------- misc */
+
+.live-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #ffffff;
+  background-color: var(--frisky-accent);
+}

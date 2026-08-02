@@ -1,0 +1,8 @@
+/target/
+/build/
+/.flatpak-builder/
+/repo/
+*.flatpak
+*.AppImage
+/AppDir/
+/dist/

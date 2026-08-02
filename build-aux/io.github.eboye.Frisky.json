@@ -1,0 +1,74 @@
+{
+    "id": "io.github.eboye.Frisky",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "49",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "command": "frisky-gtk",
+
+    "finish-args": [
+        "--share=ipc",
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--device=dri",
+
+        "--socket=pulseaudio",
+
+        "--share=network",
+
+        "--own-name=org.mpris.MediaPlayer2.friskygtk",
+
+        "--talk-name=org.freedesktop.secrets"
+    ],
+
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "build-args": [],
+        "env": {
+            "CARGO_HOME": "/run/build/frisky-gtk/cargo",
+            "RUST_BACKTRACE": "1"
+        }
+    },
+
+    "cleanup": [
+        "/include",
+        "/lib/pkgconfig",
+        "/man",
+        "/share/doc",
+        "/share/man",
+        "*.a",
+        "*.la"
+    ],
+
+    "modules": [
+        {
+            "name": "frisky-gtk",
+            "buildsystem": "simple",
+            "build-commands": [
+                "cargo --offline fetch --manifest-path Cargo.toml --verbose",
+                "cargo --offline build --release --verbose",
+
+                "install -Dm755 target/release/frisky-gtk /app/bin/frisky-gtk",
+
+                "install -Dm644 data/io.github.eboye.Frisky.desktop /app/share/applications/io.github.eboye.Frisky.desktop",
+                "install -Dm644 data/io.github.eboye.Frisky.metainfo.xml /app/share/metainfo/io.github.eboye.Frisky.metainfo.xml",
+                "install -Dm644 data/icons/io.github.eboye.Frisky.svg /app/share/icons/hicolor/scalable/apps/io.github.eboye.Frisky.svg",
+
+                "sed 's|@BINDIR@|/app/bin|' data/io.github.eboye.Frisky.service.in > io.github.eboye.Frisky.service",
+                "install -Dm644 io.github.eboye.Frisky.service /app/share/dbus-1/services/io.github.eboye.Frisky.service",
+
+                "install -Dm644 data/io.github.eboye.Frisky.gschema.xml /app/share/glib-2.0/schemas/io.github.eboye.Frisky.gschema.xml",
+                "glib-compile-schemas /app/share/glib-2.0/schemas"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": ".."
+                },
+                "cargo-sources.json"
+            ]
+        }
+    ]
+}

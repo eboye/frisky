@@ -1,0 +1,62 @@
+[package]
+name = "frisky-gtk"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Unofficial GNOME client for FRISKY Radio"
+license = "GPL-3.0-or-later"
+# flatpak-builder's output contains a symlink to /run, and walking it sends
+# cargo through filesystem loops. Keep those trees out of cargo's sight.
+exclude = ["build", ".flatpak-builder", "repo", "dist"]
+
+[[bin]]
+name = "frisky-gtk"
+path = "src/main.rs"
+
+[dependencies]
+# GTK stack. These feature flags become pkg-config minimums, so they are set to
+# the oldest versions that carry every API the app actually uses — GTK 4.12 and
+# libadwaita 1.5 (for AdwDialog and friends). Keeping them low means the same
+# source builds on distro packages as well as in the Flatpak runtime; newer
+# libraries still work, we just do not call anything newer.
+gtk = { package = "gtk4", version = "0.11", features = ["v4_12"] }
+adw = { package = "libadwaita", version = "0.9", features = ["v1_5"] }
+gstreamer = "0.25"
+
+# Async side. Everything network-facing lives on the tokio runtime; results
+# cross into the GTK main loop over an async_channel.
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio-tungstenite = { version = "0.30", features = ["native-tls"] }
+futures-util = "0.3"
+async-channel = "2.5"
+
+# TLS via OpenSSL, which both the host and the GNOME runtime already ship.
+# reqwest's `rustls` feature would drag in aws-lc-sys, which needs cmake and a C
+# toolchain at build time — avoidable weight for a Flatpak.
+reqwest = { version = "0.13", default-features = false, features = [
+    "json",
+    "query",
+    "native-tls",
+    "http2",
+    "gzip",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+
+mpris-server = "0.10"
+oo7 = { version = "0.6", default-features = false, features = ["async-std", "native_crypto"] }
+
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+glib-build-tools = "0.21"
+
+[profile.release]
+opt-level = "s"
+# Thin LTO gets most of the size win of full LTO in a fraction of the time,
+# which matters on CI runners as much as it does locally.
+lto = "thin"
+strip = true

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.eboye.Frisky</id>
+
+  <name>Frisky</name>
+  <summary>Listen to FRISKY Radio</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      A small native GNOME player for FRISKY Radio's four channels: Frisky,
+      Deep, Chill and Classics.
+    </p>
+    <p>
+      It shows the cover art and tracklist of the DJ mix currently on air, draws
+      a live visualiser over the artwork, and integrates with the system media
+      controls so you can play, stop and switch channels without opening the
+      window.
+    </p>
+    <p>
+      This is an unofficial client. It is not affiliated with or endorsed by
+      FRISKY. Channel names, artwork and audio belong to FRISKY and its artists.
+      Streaming at 96 kbps is free; higher bitrates require a FRISKY
+      subscription.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.eboye.Frisky.desktop</launchable>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Player</category>
+  </categories>
+
+  <keywords>
+    <keyword>radio</keyword>
+    <keyword>music</keyword>
+    <keyword>stream</keyword>
+    <keyword>electronic</keyword>
+  </keywords>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+    <internet>always</internet>
+  </requires>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-audio">intense</content_attribute>
+  </content_rating>
+
+  <releases>
+    <release version="0.1.0" date="2026-08-02">
+      <description>
+        <p>First release.</p>
+        <ul>
+          <li>All four FRISKY channels with brand-accurate styling</li>
+          <li>Cover art and tracklist for the mix currently on air</li>
+          <li>Live audio visualiser that fades away on hover</li>
+          <li>MPRIS media controls and mix-change notifications</li>
+          <li>Optional login for subscriber audio quality</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <developer id="io.github.eboye">
+    <name>eboye</name>
+  </developer>
+
+  <url type="homepage">https://frisky.fm</url>
+</component>

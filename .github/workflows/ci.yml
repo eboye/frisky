@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Build and test
+    # Ubuntu 24.04 ships GTK 4.14 and libadwaita 1.5, which clear the crate
+    # minimums, so no container is needed.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libadwaita-1-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libssl-dev \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad gstreamer1.0-libav \
+            xvfb
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        # Scoped to this crate: a blanket RUSTFLAGS would also deny warnings in
+        # dependencies, which we do not control.
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        # The player tests drive a real GStreamer pipeline and GTK wants a
+        # display, though nothing is played aloud.
+        run: xvfb-run -a cargo test --all --locked
+
+  flatpak:
+    name: Flatpak
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: frisky.flatpak
+          manifest-path: build-aux/io.github.eboye.Frisky.json
+          cache-key: flatpak-builder-${{ github.sha }}
+
+  metadata:
+    name: Validate metadata
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validators
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appstream desktop-file-utils
+
+      - name: Validate AppStream metainfo
+        run: appstreamcli validate --no-net data/io.github.eboye.Frisky.metainfo.xml
+
+      - name: Validate desktop entry
+        # The entry is D-Bus activatable and its service file is installed at
+        # build time, so the reference to it is expected to be unresolvable here.
+        run: desktop-file-validate data/io.github.eboye.Frisky.desktop

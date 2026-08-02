@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build (for a manual run)
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  flatpak:
+    name: Flatpak bundle
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: frisky.flatpak
+          manifest-path: build-aux/io.github.eboye.Frisky.json
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: frisky.flatpak
+
+  appimage:
+    name: AppImage and tarball
+    runs-on: ubuntu-24.04
+    # Ubuntu 24.04 ships GTK 4.14 and libadwaita 1.5, which clear the crate's
+    # minimums. Building here rather than in the Flatpak runtime keeps the
+    # AppImage's glibc requirement as low as the runner allows.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libadwaita-1-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libssl-dev \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad gstreamer1.0-libav \
+            desktop-file-utils appstream librsvg2-bin \
+            fuse libfuse2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: release-cargo-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Stage install tree
+        run: |
+          ./build-aux/install.sh "${{ github.workspace }}/AppDir/usr"
+          # AppImage wants the desktop entry and icon at the AppDir root too.
+          cp AppDir/usr/share/applications/io.github.eboye.Frisky.desktop AppDir/
+          cp AppDir/usr/share/icons/hicolor/scalable/apps/io.github.eboye.Frisky.svg AppDir/
+          rsvg-convert -w 256 -h 256 \
+            AppDir/usr/share/icons/hicolor/scalable/apps/io.github.eboye.Frisky.svg \
+            -o AppDir/io.github.eboye.Frisky.png
+
+      - name: Determine version
+        id: version
+        run: |
+          ref="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Binary tarball
+        run: |
+          mkdir -p dist
+          tar -C AppDir/usr -czf \
+            "dist/frisky-${{ steps.version.outputs.version }}-x86_64-linux.tar.gz" .
+
+      - name: Build AppImage
+        run: |
+          curl -fsSL -o appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          # Resolve the AppDir even when invoked through a symlink.
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export PATH="$HERE/usr/bin:$PATH"
+          export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
+          # The bundled GSettings schema must be findable, or gio aborts.
+          export GSETTINGS_SCHEMA_DIR="$HERE/usr/share/glib-2.0/schemas"
+          export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+          exec "$HERE/usr/bin/frisky-gtk" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir \
+            "dist/Frisky-${{ steps.version.outputs.version }}-x86_64.AppImage"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage-and-tarball
+          path: dist/*
+
+  publish:
+    name: Publish release
+    needs: [flatpak, appimage]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/flatpak/frisky.flatpak
+            artifacts/appimage-and-tarball/*
