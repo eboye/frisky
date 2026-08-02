@@ -4,6 +4,7 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 use tracing::warn;
 
+use crate::audio;
 use crate::channel::Quality;
 use crate::window::FriskyWindow;
 
@@ -23,6 +24,7 @@ fn audio_page(window: &FriskyWindow, settings: &gio::Settings) -> adw::Preferenc
         .icon_name("audio-headphones-symbolic")
         .build();
 
+    page.add(&output_group(settings));
     page.add(&quality_group(settings));
     page.add(&notification_group(settings));
     page.add(&account_group(window));
@@ -43,6 +45,41 @@ fn notification_group(settings: &gio::Settings) -> adw::PreferencesGroup {
         .build();
 
     settings.bind("notify-mix-change", &row, "active").build();
+
+    group.add(&row);
+    group
+}
+
+fn output_group(settings: &gio::Settings) -> adw::PreferencesGroup {
+    let group = adw::PreferencesGroup::builder()
+        .title("Output")
+        .description(
+            "Where to play. The system default is not always where the \
+             speakers are — an unused digital output will play to silence.",
+        )
+        .build();
+
+    let devices = audio::output_devices();
+    let labels: Vec<&str> = devices.iter().map(|d| d.name.as_str()).collect();
+    let model = gtk::StringList::new(&labels);
+
+    let row = adw::ComboRow::builder()
+        .title("Device")
+        .model(&model)
+        .build();
+
+    // A device that has since been unplugged leaves nothing to select, so fall
+    // back to the default rather than showing a stale name.
+    let stored = settings.string("audio-device");
+    let selected = devices.iter().position(|d| d.id == stored).unwrap_or(0) as u32;
+    row.set_selected(selected);
+
+    let settings = settings.clone();
+    row.connect_selected_notify(move |row| {
+        if let Some(device) = devices.get(row.selected() as usize) {
+            let _ = settings.set_string("audio-device", &device.id);
+        }
+    });
 
     group.add(&row);
     group

@@ -3,6 +3,7 @@
 mod api;
 mod app;
 mod artwork;
+mod audio;
 mod auth;
 mod channel;
 mod event;

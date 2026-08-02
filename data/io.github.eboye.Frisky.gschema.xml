@@ -37,6 +37,16 @@
       </description>
     </key>
 
+    <key name="audio-device" type="s">
+      <default>''</default>
+      <summary>Audio output device</summary>
+      <description>
+        Identifier of the audio sink to play to. Empty means the system
+        default. An identifier that no longer matches a present device falls
+        back to the default rather than failing to play.
+      </description>
+    </key>
+
     <key name="quality" enum="io.github.eboye.Frisky.Quality">
       <default>'low'</default>
       <summary>Preferred audio quality</summary>

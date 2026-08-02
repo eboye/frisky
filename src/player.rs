@@ -42,6 +42,8 @@ pub struct Player {
     /// Logged once per stream so a silent visualiser is diagnosable without
     /// drowning the log in twenty messages a second.
     level_seen: Cell<bool>,
+    /// Chosen output device; empty means whatever playbin picks.
+    device: RefCell<String>,
 }
 
 impl Player {
@@ -80,10 +82,24 @@ impl Player {
             volume: Cell::new(1.0),
             bus_watch: RefCell::new(None),
             level_seen: Cell::new(false),
+            device: RefCell::new(String::new()),
         });
 
         player.watch_bus()?;
         Ok(player)
+    }
+
+    /// Selects the audio output. Takes effect on the next start, so a change
+    /// while playing restarts the stream.
+    pub fn set_output_device(&self, device_id: &str) {
+        if *self.device.borrow() == device_id {
+            return;
+        }
+        *self.device.borrow_mut() = device_id.to_owned();
+
+        if self.is_active() {
+            self.start();
+        }
     }
 
     pub fn state(&self) -> PlayerState {
@@ -113,8 +129,14 @@ impl Player {
         let uri = channel.stream_url(quality, token.as_deref());
         debug!("starting playback: {}", redact_token(&uri));
 
-        // The URI can only be changed from Null.
+        // The URI and the sink can only be changed from Null.
         let _ = self.playbin.set_state(gst::State::Null);
+
+        // Setting audio-sink to None restores playbin's own choice, so the
+        // system default keeps working after picking a device and going back.
+        let sink = crate::audio::make_sink(&self.device.borrow());
+        self.playbin.set_property("audio-sink", sink.as_ref());
+
         self.playbin.set_property("uri", &uri);
         self.apply_volume();
 

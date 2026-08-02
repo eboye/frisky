@@ -34,13 +34,20 @@ Built with GTK4, libadwaita and GStreamer.
 
 - **All four channels** — Frisky, Deep, Chill and Classics, each in its own brand gradient
 - **Cover art and tracklist** for the DJ mix currently on air
-- **Live visualiser** drawn over the artwork, fading away on hover
-- **MPRIS** — play, stop and switch channels from the GNOME top bar, media keys and lock screen
+- **Live visualiser** over the artwork, auto-ranging to the levels actually arriving so
+  heavily-limited broadcast audio still shows movement rather than a flat wall
 - **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — one row: the whole window becomes the channel
-  gradient, the title bar folds into it, and cover, visualiser, track, mix progress, channel chips
-  and window controls all sit on the same line
+  gradient over the blurred cover art, with the title bar folded in and the track, mix progress
+  and channel chips alongside the controls
+- **Mix progress**, taken from the broadcast schedule rather than estimated
+- **MPRIS** — play, stop and switch channels from the GNOME top bar, media keys and lock screen.
+  Next and Previous move between channels
+- **Output device picker** — send audio somewhere other than the system default, which is not
+  always where the speakers are
 - **Notifications** when the mix changes, switchable off in Preferences
-- Follows the system light/dark preference, and remembers your channel and volume
+- **Optional login** for the 128 and 320 kbps subscriber tiers
+- A wave rather than a spinner while buffering, and a keyboard shortcut for everything
+- Follows the system light/dark preference; remembers your channel and volume
 
 ## Install
 
@@ -170,6 +177,16 @@ Flatpak bundle, AppImage and binary tarball, then publishes them:
 git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
 ```
 
+## Shortcuts
+
+| | |
+|---|---|
+| <kbd>Space</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd> | Play or stop |
+| <kbd>Ctrl</kbd>+<kbd>M</kbd> | Mini player |
+| <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>F5</kbd> | Refresh now playing |
+| <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |
+| <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
+
 ## How it talks to FRISKY
 
 Everything comes from the same public API the web player uses. Nothing here needs
@@ -246,9 +263,10 @@ src/
 ├── artwork.rs       cover art fetching and disk cache
 ├── auth.rs          login and keyring storage
 ├── preferences.rs   quality and account settings
+├── audio.rs         output device enumeration
 ├── event.rs         the tokio → GTK event channel
 ├── api/             HTTP client, models, now-playing socket
-└── widgets/         channel pills, tracklist, visualiser
+└── widgets/         channel pills, tracklist, visualiser, buffering wave
 ```
 
 Background work runs on a tokio runtime and reaches the GTK main loop as

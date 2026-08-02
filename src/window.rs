@@ -186,6 +186,7 @@ impl FriskyWindow {
         *imp.refresh.borrow_mut() = Some(refresh);
         *imp.settings.borrow_mut() = Some(settings);
 
+        self.apply_output_device();
         self.restore_state();
         self.spawn_event_loop(events);
     }
@@ -479,6 +480,32 @@ impl FriskyWindow {
                 if let Some(settings) = imp.settings.borrow().as_ref() {
                     let _ = settings.set_double("volume", value);
                 }
+            }
+        });
+    }
+
+    /// Applies the stored output device, and keeps following it if changed
+    /// from preferences while the window is open.
+    fn apply_output_device(&self) {
+        let imp = self.imp();
+        let Some(settings) = imp.settings.borrow().clone() else {
+            return;
+        };
+
+        if let Some(player) = imp.player.borrow().as_ref() {
+            player.set_output_device(&settings.string("audio-device"));
+        }
+
+        let window = self.downgrade();
+        settings.connect_changed(Some("audio-device"), move |settings, _| {
+            let Some(window) = window.upgrade() else {
+                return;
+            };
+            let player = window.imp().player.borrow().clone();
+            if let Some(player) = player {
+                // Restarts the stream if playing, so the change is audible
+                // immediately rather than at the next channel switch.
+                player.set_output_device(&settings.string("audio-device"));
             }
         });
     }
