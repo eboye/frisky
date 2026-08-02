@@ -114,7 +114,9 @@ flatpak install flathub org.gnome.Platform//49 org.gnome.Sdk//49 \
 
 # Build outside the source tree: flatpak-builder's output contains a symlink
 # to /run, and cargo walks itself into filesystem loops if it lives here.
-flatpak-builder --user --install --force-clean /tmp/frisky-build \
+# The state dir has to move too — it must share a filesystem with the target.
+flatpak-builder --user --install --force-clean \
+    --state-dir=/tmp/frisky-state /tmp/frisky-build \
     build-aux/io.github.eboye.Frisky.json
 ```
 
