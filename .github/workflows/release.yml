@@ -163,14 +163,24 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
+      # Checkout first: it cleans the workspace, so downloading the artifacts
+      # before it would silently delete them and publish a release with no
+      # files attached.
       - uses: actions/checkout@v4
         with:
           sparse-checkout: .github/release-body.md
           sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Check the artifacts survived
+        run: |
+          test -f artifacts/flatpak/frisky.flatpak
+          ls artifacts/appimage-and-tarball/*.AppImage >/dev/null
+          ls artifacts/appimage-and-tarball/*.tar.gz >/dev/null
+          find artifacts -type f -printf "  %P  %s bytes\n"
 
       - name: Publish
         uses: softprops/action-gh-release@v2
