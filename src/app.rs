@@ -48,6 +48,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().setup_actions();
+            self.obj().setup_options();
         }
     }
 
@@ -149,6 +150,28 @@ impl FriskyApplication {
 
         crate::mpris::attach(self, window, player);
         Ok(())
+    }
+
+    /// Adds `--version`, which a bug report can quote without the reporter
+    /// having to know whether they installed a Flatpak, an AppImage or a
+    /// distro package.
+    fn setup_options(&self) {
+        self.add_main_option(
+            "version",
+            glib::Char::from(b'v'),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::None,
+            "Show the version and exit",
+            None,
+        );
+
+        self.connect_handle_local_options(|_, options| {
+            if options.contains("version") {
+                println!("frisky-gtk {}", env!("CARGO_PKG_VERSION"));
+                return std::ops::ControlFlow::Break(glib::ExitCode::SUCCESS);
+            }
+            std::ops::ControlFlow::Continue(())
+        });
     }
 
     fn setup_actions(&self) {

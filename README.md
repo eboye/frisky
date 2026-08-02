@@ -142,49 +142,20 @@ sudo pacman -S gtk4 libadwaita gst-plugins-base gst-plugins-good \
 
 </details>
 
-### Flatpak
-
-```sh
-flatpak install flathub org.gnome.Platform//49 org.gnome.Sdk//49 \
-    org.freedesktop.Sdk.Extension.rust-stable//25.08
-
-# Build outside the source tree: flatpak-builder's output contains a symlink to
-# /run, and cargo walks itself into filesystem loops if it lives here. The state
-# dir has to move with it — flatpak-builder requires both on one filesystem.
-#
-# Not /tmp: on many systems that is a RAM-backed tmpfs, and a cargo release
-# build there will exhaust memory and fill it. Use real disk.
-flatpak-builder --user --install --force-clean \
-    --state-dir=~/.cache/frisky-flatpak/state ~/.cache/frisky-flatpak/build \
-    build-aux/io.github.eboye.Frisky.json
-```
-
-After changing dependencies, regenerate the vendored crate list the offline
-Flatpak build needs:
-
-```sh
-pip install aiohttp toml tomlkit
-curl -O https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py
-python3 flatpak-cargo-generator.py Cargo.lock -o build-aux/cargo-sources.json
-```
-
-### Releasing
-
-Push a tag and the [release workflow](.github/workflows/release.yml) builds the
-Flatpak bundle, AppImage and binary tarball, then publishes them:
-
-```sh
-git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
-```
+Building the Flatpak, regenerating the vendored crate list after a dependency
+change, and cutting a release are covered in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Shortcuts
 
 | | |
 |---|---|
 | <kbd>Space</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd> | Play or stop |
+| <kbd>Ctrl</kbd>+<kbd>N</kbd> | Next channel |
 | <kbd>Ctrl</kbd>+<kbd>M</kbd> | Mini player |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>F5</kbd> | Refresh now playing |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |
+| <kbd>Ctrl</kbd>+<kbd>?</kbd> | Keyboard shortcuts |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
 
 ## How it talks to FRISKY
@@ -274,19 +245,11 @@ Background work runs on a tokio runtime and reaches the GTK main loop as
 
 ## Contributing
 
-Two documents cover what the README does not:
-
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the pieces fit
-  together and why: the threading model, the player state machine, how
-  now-playing stays fresh without polling, and how the compact player is
-  layered.
-- **[CLAUDE.md](CLAUDE.md)** — conventions, verification standards, settled
-  project decisions, and a list of the traps in this stack that have already
-  cost someone an afternoon. Worth reading before the first change, whether
-  you are a person or an agent.
-
-Please run `cargo fmt --all`, `cargo clippy --all-targets -- -D warnings` and
-`cargo test --all` before opening a pull request; CI enforces all three.
+Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup, the dev loop, what a
+good change looks like, building the Flatpak, and the release process. It points
+on to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit
+together, and [CLAUDE.md](CLAUDE.md) for the conventions and the traps in this
+stack that have already cost someone an afternoon.
 
 ## Licence
 
