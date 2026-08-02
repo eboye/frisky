@@ -12,6 +12,7 @@ mod preferences;
 mod window;
 
 mod widgets {
+    pub mod buffering;
     pub mod channel_pill;
     pub mod tracklist;
     pub mod visualizer;

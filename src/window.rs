@@ -14,6 +14,7 @@ use crate::artwork::ArtworkCache;
 use crate::channel::{Channel, Quality};
 use crate::event::{AppEvent, NowPlaying, PlayerState, Receiver};
 use crate::player::Player;
+use crate::widgets::buffering::BufferingIndicator;
 use crate::widgets::channel_pill::ChannelPill;
 use crate::widgets::tracklist::Tracklist;
 use crate::widgets::visualizer::{Visualizer, VisualizerSize};
@@ -45,7 +46,7 @@ mod imp {
         #[template_child]
         pub play_icon: TemplateChild<gtk::Image>,
         #[template_child]
-        pub play_spinner: TemplateChild<gtk::Spinner>,
+        pub buffering_slot: TemplateChild<gtk::Box>,
         #[template_child]
         pub volume_button: TemplateChild<gtk::ScaleButton>,
         #[template_child]
@@ -99,6 +100,7 @@ mod imp {
         pub visualizers: RefCell<Vec<Rc<Visualizer>>>,
         /// Tick handle that decays the waveform after audio stops.
         pub decay_tick: RefCell<Option<gtk::TickCallbackId>>,
+        pub buffering: RefCell<Option<Rc<BufferingIndicator>>>,
         pub chips: RefCell<Vec<(Channel, gtk::Button)>>,
         /// Ticks once a second to advance the mix progress bar.
         pub progress_tick: RefCell<Option<glib::SourceId>>,
@@ -145,6 +147,10 @@ impl FriskyWindow {
     }
 
     fn setup(&self) {
+        let buffering = Rc::new(BufferingIndicator::new());
+        self.imp().buffering_slot.append(buffering.widget());
+        *self.imp().buffering.borrow_mut() = Some(buffering);
+
         let window = self.downgrade();
         self.imp()
             .view_stack
@@ -433,6 +439,12 @@ impl FriskyWindow {
     fn stop_decay(&self) {
         if let Some(tick) = self.imp().decay_tick.borrow_mut().take() {
             tick.remove();
+        }
+    }
+
+    fn set_buffering_animation(&self, active: bool) {
+        if let Some(buffering) = self.imp().buffering.borrow().as_ref() {
+            buffering.set_active(active);
         }
     }
 
@@ -751,14 +763,13 @@ impl FriskyWindow {
                 for visualizer in imp.visualizers.borrow().iter() {
                     visualizer.reset_range();
                 }
+                self.set_buffering_animation(true);
                 imp.play_stack.set_visible_child_name("busy");
-                imp.play_spinner.set_spinning(true);
                 imp.play_button.set_tooltip_text(Some("Connecting…"));
             }
             PlayerState::Playing => {
                 self.stop_decay();
                 self.start_progress_tick();
-                imp.play_spinner.set_spinning(false);
                 imp.play_stack.set_visible_child_name("idle");
                 imp.play_icon
                     .set_icon_name(Some("media-playback-stop-symbolic"));
@@ -770,7 +781,6 @@ impl FriskyWindow {
             PlayerState::Stopped => {
                 self.stop_progress_tick();
                 self.start_decay();
-                imp.play_spinner.set_spinning(false);
                 imp.play_stack.set_visible_child_name("idle");
                 imp.play_icon
                     .set_icon_name(Some("media-playback-start-symbolic"));
