@@ -69,6 +69,17 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.1" date="2026-08-02">
+      <description>
+        <ul>
+          <li>The mini player is now a single row: the title bar folds into it and the window becomes the channel gradient</li>
+          <li>Mix progress, from the broadcast schedule</li>
+          <li>Channel chips inline in the mini player</li>
+          <li>A close button in the mini player, which had none</li>
+          <li>Mix-change notifications can be switched off in Preferences</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-08-02">
       <description>
         <p>First release.</p>
