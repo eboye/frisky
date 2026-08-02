@@ -69,6 +69,15 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.3" date="2026-08-02">
+      <description>
+        <ul>
+          <li>An Arch Linux package, built against the system GTK and GStreamer</li>
+          <li>A travelling wave replaces the spinner while buffering</li>
+          <li>The Classics play button reads as a button rather than as disabled</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.2" date="2026-08-02">
       <description>
         <ul>
