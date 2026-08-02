@@ -5,7 +5,7 @@
 # pkgver and pins the checksum before publishing this file.
 
 pkgname=frisky
-pkgver=0.1.3
+pkgver=0.1.4
 pkgrel=1
 pkgdesc="Unofficial native GNOME client for FRISKY Radio"
 arch=('x86_64')
