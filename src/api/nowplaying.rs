@@ -133,7 +133,12 @@ async fn refresh(
         let (Some(channel), Some(mix)) = (Channel::from_id(id), station.mix.clone()) else {
             continue;
         };
-        playing.push(build_now_playing(client, channel, mix, artists).await);
+        let window = station
+            .scheduled_mix
+            .as_ref()
+            .map(|entry| (entry.scheduled_start_time, entry.scheduled_end_time))
+            .unwrap_or((None, None));
+        playing.push(build_now_playing(client, channel, mix, window, artists).await);
     }
 
     // Keep a stable order so the UI never reshuffles.
@@ -149,6 +154,7 @@ async fn build_now_playing(
     client: &FriskyClient,
     channel: Channel,
     mix: Mix,
+    airing: (Option<DateTime<Utc>>, Option<DateTime<Utc>>),
     artists: &mut HashMap<u64, String>,
 ) -> NowPlaying {
     let show_id = mix.show_id.as_ref().map(|r| r.id);
@@ -176,6 +182,8 @@ async fn build_now_playing(
         mix,
         artist,
         show_id,
+        started_at: airing.0,
+        ends_at: airing.1,
     }
 }
 

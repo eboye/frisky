@@ -59,17 +59,21 @@ mod imp {
         #[template_child]
         pub compact_bar: TemplateChild<gtk::Box>,
         #[template_child]
-        pub compact_visualizer_slot: TemplateChild<gtk::Box>,
+        pub compact_artwork_overlay: TemplateChild<gtk::Overlay>,
+        #[template_child]
+        pub compact_artwork: TemplateChild<gtk::Picture>,
         #[template_child]
         pub compact_title: TemplateChild<gtk::Label>,
         #[template_child]
-        pub compact_channel_label: TemplateChild<gtk::Label>,
+        pub compact_chips: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub compact_progress: TemplateChild<gtk::ProgressBar>,
+        #[template_child]
+        pub compact_time: TemplateChild<gtk::Label>,
         #[template_child]
         pub compact_play_icon: TemplateChild<gtk::Image>,
         #[template_child]
         pub compact_play_button: TemplateChild<gtk::Button>,
-        #[template_child]
-        pub compact_channel_button: TemplateChild<gtk::Button>,
 
         pub player: RefCell<Option<Rc<Player>>>,
         pub client: RefCell<Option<FriskyClient>>,
@@ -89,6 +93,9 @@ mod imp {
         pub visualizers: RefCell<Vec<Rc<Visualizer>>>,
         /// Tick handle that decays the waveform after audio stops.
         pub decay_tick: RefCell<Option<gtk::TickCallbackId>>,
+        pub chips: RefCell<Vec<(Channel, gtk::Button)>>,
+        /// Ticks once a second to advance the mix progress bar.
+        pub progress_tick: RefCell<Option<glib::SourceId>>,
     }
 
     #[glib::object_subclass]
@@ -132,9 +139,20 @@ impl FriskyWindow {
     }
 
     fn setup(&self) {
+        let window = self.downgrade();
+        self.imp()
+            .view_stack
+            .connect_visible_child_name_notify(move |stack| {
+                let name = stack.visible_child_name();
+                debug!("layout switched to {:?}", name);
+                if let Some(window) = window.upgrade() {
+                    window.set_compact_styling(name.as_deref() == Some("compact"));
+                }
+            });
+
         *self.imp().tracklist.borrow_mut() = Some(Tracklist::new(self.imp().tracklist_row.get()));
         self.build_visualizers();
-        self.build_compact_channel_menu();
+        self.build_compact_chips();
         self.build_channel_pills();
         self.setup_actions();
         self.setup_volume();
@@ -180,6 +198,7 @@ impl FriskyWindow {
 
         *imp.pills.borrow_mut() = pills;
         self.update_pill_selection();
+        self.update_chip_selection();
     }
 
     fn setup_actions(&self) {
@@ -226,49 +245,131 @@ impl FriskyWindow {
         imp.artwork_overlay.add_controller(hover);
 
         let compact = Rc::new(Visualizer::new(VisualizerSize::COMPACT));
-        imp.compact_visualizer_slot.append(compact.widget());
+        imp.compact_artwork_overlay.add_overlay(compact.widget());
+
+        let hover = gtk::EventControllerMotion::new();
+        let faded = compact.clone();
+        hover.connect_enter(move |_, _, _| faded.set_faded(true));
+        let restored = compact.clone();
+        hover.connect_leave(move |_| restored.set_faded(false));
+        imp.compact_artwork_overlay.add_controller(hover);
 
         *imp.visualizers.borrow_mut() = vec![cover, compact];
     }
 
-    /// Popover for switching channels from the compact bar, which has no room
-    /// for the pills.
-    fn build_compact_channel_menu(&self) {
+    /// In mini mode the gradient fills the window rather than sitting in a
+    /// floating card, so the styling moves onto the window itself.
+    fn set_compact_styling(&self, compact: bool) {
+        if compact {
+            self.add_css_class("compact-mode");
+        } else {
+            self.remove_css_class("compact-mode");
+        }
+        // Re-apply so the window picks up the current channel's gradient.
+        self.update_channel_styling();
+    }
+
+    /// Puts the selected channel's gradient on everything that wears it.
+    fn update_channel_styling(&self) {
         let imp = self.imp();
+        let channel = imp.selected.get();
 
-        let list = gtk::Box::builder()
-            .orientation(gtk::Orientation::Vertical)
-            .spacing(4)
-            .build();
+        for other in Channel::ALL {
+            imp.play_button.remove_css_class(other.css_class());
+            imp.compact_bar.remove_css_class(other.css_class());
+            self.remove_css_class(other.css_class());
+        }
+        imp.play_button.add_css_class(channel.css_class());
+        imp.compact_bar.add_css_class(channel.css_class());
+        self.add_css_class(channel.css_class());
+    }
 
-        let popover = gtk::Popover::builder().child(&list).build();
-        popover.set_parent(&imp.compact_channel_button.get());
+    /// The four channel chips in the compact bar.
+    ///
+    /// Inline rather than behind a popover: at two characters each they fit,
+    /// and switching channel is the one thing the mini player exists for.
+    fn build_compact_chips(&self) {
+        let imp = self.imp();
+        let mut chips = Vec::new();
 
         for channel in Channel::ALL {
             let button = gtk::Button::builder()
-                .label(channel.wordmark())
-                .css_classes(["flat", "compact-channel-item", channel.css_class()])
+                .label(channel.short_label())
+                .tooltip_text(format!("Listen to {}", channel.title()))
+                .valign(gtk::Align::Center)
+                .css_classes(["compact-chip", channel.css_class()])
                 .build();
 
             let window = self.downgrade();
-            let popover = popover.clone();
             button.connect_clicked(move |_| {
-                popover.popdown();
                 if let Some(window) = window.upgrade() {
                     window.select_channel(channel, true);
                 }
             });
-            list.append(&button);
+
+            imp.compact_chips.append(&button);
+            chips.push((channel, button));
         }
 
-        let popover_ref = popover.clone();
-        imp.compact_channel_button
-            .connect_clicked(move |_| popover_ref.popup());
+        *imp.chips.borrow_mut() = chips;
+    }
 
-        // Popovers with a manually set parent are not owned by it, so unparent
-        // explicitly or GTK warns at teardown.
-        let popover_ref = popover.clone();
-        self.connect_destroy(move |_| popover_ref.unparent());
+    fn update_chip_selection(&self) {
+        let imp = self.imp();
+        let selected = imp.selected.get();
+        for (channel, button) in imp.chips.borrow().iter() {
+            if *channel == selected {
+                button.add_css_class("selected");
+            } else {
+                button.remove_css_class("selected");
+            }
+        }
+    }
+
+    /// Advances the mix progress bar once a second while something is playing.
+    fn start_progress_tick(&self) {
+        if self.imp().progress_tick.borrow().is_some() {
+            return;
+        }
+
+        let window = self.downgrade();
+        let tick = glib::timeout_add_seconds_local(1, move || {
+            let Some(window) = window.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            window.update_progress();
+            glib::ControlFlow::Continue
+        });
+        *self.imp().progress_tick.borrow_mut() = Some(tick);
+    }
+
+    fn stop_progress_tick(&self) {
+        if let Some(tick) = self.imp().progress_tick.borrow_mut().take() {
+            tick.remove();
+        }
+    }
+
+    /// Redraws the progress bar from the airing mix's schedule.
+    fn update_progress(&self) {
+        let imp = self.imp();
+
+        let progress = self
+            .current()
+            .and_then(|entry| entry.progress_at(chrono::Utc::now()));
+
+        match progress {
+            Some(progress) => {
+                imp.compact_progress.set_fraction(progress.fraction);
+                imp.compact_time.set_label(&progress.label());
+                imp.compact_progress.set_visible(true);
+                imp.compact_time.set_visible(true);
+            }
+            // Without a schedule window there is nothing honest to show.
+            None => {
+                imp.compact_progress.set_visible(false);
+                imp.compact_time.set_visible(false);
+            }
+        }
     }
 
     /// Snaps the window between the full and compact layouts.
@@ -280,7 +381,7 @@ impl FriskyWindow {
         if compact {
             self.set_default_size(420, 760);
         } else {
-            self.set_default_size(420, 200);
+            self.set_default_size(400, 150);
         }
     }
 
@@ -459,6 +560,7 @@ impl FriskyWindow {
         imp.selected.set(channel);
 
         self.update_pill_selection();
+        self.update_chip_selection();
         self.update_now_playing_display();
 
         if let Some(settings) = imp.settings.borrow().as_ref() {
@@ -538,6 +640,7 @@ impl FriskyWindow {
         }
 
         self.update_now_playing_display();
+        self.update_progress();
         self.request_artwork();
 
         // Only notify once a mix has actually replaced another one, so the
@@ -561,6 +664,7 @@ impl FriskyWindow {
         match now_playing {
             Some(entry) => {
                 imp.track_title.set_label(&entry.display_title());
+                self.update_progress();
                 imp.track_subtitle.set_label(&entry.subtitle());
                 imp.compact_title.set_label(&entry.display_title());
                 imp.displayed_show.set(entry.show_id);
@@ -582,13 +686,7 @@ impl FriskyWindow {
         }
 
         // The play button wears the selected channel's gradient.
-        for other in Channel::ALL {
-            imp.play_button.remove_css_class(other.css_class());
-            imp.compact_bar.remove_css_class(other.css_class());
-        }
-        imp.play_button.add_css_class(channel.css_class());
-        imp.compact_bar.add_css_class(channel.css_class());
-        imp.compact_channel_label.set_label(channel.wordmark());
+        self.update_channel_styling();
     }
 
     fn request_artwork(&self) {
@@ -624,6 +722,7 @@ impl FriskyWindow {
         match gdk::Texture::from_bytes(&glib::Bytes::from(bytes)) {
             Ok(texture) => {
                 imp.artwork.set_paintable(Some(&texture));
+                imp.compact_artwork.set_paintable(Some(&texture));
                 imp.artwork_overlay.add_css_class("has-art");
             }
             Err(error) => warn!("could not decode artwork for show {show_id}: {error}"),
@@ -644,6 +743,7 @@ impl FriskyWindow {
             }
             PlayerState::Playing => {
                 self.stop_decay();
+                self.start_progress_tick();
                 imp.play_spinner.set_spinning(false);
                 imp.play_stack.set_visible_child_name("idle");
                 imp.play_icon
@@ -654,6 +754,7 @@ impl FriskyWindow {
                 imp.compact_play_button.set_tooltip_text(Some("Stop"));
             }
             PlayerState::Stopped => {
+                self.stop_progress_tick();
                 self.start_decay();
                 imp.play_spinner.set_spinning(false);
                 imp.play_stack.set_visible_child_name("idle");

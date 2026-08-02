@@ -121,6 +121,17 @@ impl Channel {
         }
     }
 
+    /// One- or two-letter form for the compact channel chips. Chill and
+    /// Classics share an initial, so neither can be a single letter alone.
+    pub fn short_label(self) -> &'static str {
+        match self {
+            Self::Frisky => "F",
+            Self::Deep => "D",
+            Self::Chill => "CH",
+            Self::Classics => "CL",
+        }
+    }
+
     pub fn tagline(self) -> &'static str {
         match self {
             Self::Frisky => "The flagship channel",
@@ -197,6 +208,16 @@ mod tests {
             assert_eq!(Channel::from_id(channel.id()), Some(channel));
         }
         assert_eq!(Channel::from_id("nope"), None);
+    }
+
+    #[test]
+    fn short_labels_are_unique() {
+        // Ambiguous chips would make the compact switcher unusable.
+        let mut labels: Vec<&str> = Channel::ALL.iter().map(|c| c.short_label()).collect();
+        labels.sort_unstable();
+        let count = labels.len();
+        labels.dedup();
+        assert_eq!(labels.len(), count, "short labels collide: {labels:?}");
     }
 
     #[test]

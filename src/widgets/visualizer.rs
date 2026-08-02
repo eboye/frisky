@@ -143,14 +143,14 @@ impl VisualizerSize {
         scrim: true,
     };
 
-    /// A small block at the left of the compact bar.
+    /// Over the small cover in the compact bar.
     pub const COMPACT: Self = Self {
-        bars: 14,
-        width: 46,
-        height: 26,
+        bars: 11,
+        width: 44,
+        height: 44,
         gap: 2.0,
-        scale: 0.95,
-        scrim: false,
+        scale: 0.8,
+        scrim: true,
     };
 }
 

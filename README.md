@@ -26,7 +26,8 @@ Built with GTK4, libadwaita and GStreamer.
 - **Cover art and tracklist** for the DJ mix currently on air
 - **Live visualiser** drawn over the artwork, fading away on hover
 - **MPRIS** — play, stop and switch channels from the GNOME top bar, media keys and lock screen
-- **Compact player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — a single gradient bar for the corner of your screen
+- **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — the whole window becomes the channel gradient: cover
+  and visualiser on the left, track, mix progress and channel chips on the right
 - **Notifications** when the mix changes
 - Follows the system light/dark preference, and remembers your channel and volume
 
@@ -184,6 +185,10 @@ which track is playing at minute 31 of a two-hour set. "Now playing" and the
 cover art refer to the mix on air, and the tracklist is shown whole and
 unhighlighted rather than guessing at a current row. Notifications fire on mix
 changes, roughly hourly.
+
+The progress bar in the mini player is the exception: the schedule gives each mix
+a start and an end, so progress *through the mix* is real data rather than a
+guess.
 
 **The visualiser is not a waveform of the whole mix.** [Decibels][decibels] can
 draw one because it has the file and decodes it up front. A live stream has no
