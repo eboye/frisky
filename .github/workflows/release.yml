@@ -132,11 +132,22 @@ jobs:
           # A stale GTK_THEME or a dead scanner path would ship silently, so
           # assert on the packaged hook rather than trusting the plugins.
           ./dist/Frisky-*-x86_64.AppImage --appimage-extract >/dev/null
+
           grep -q "unset GTK_THEME" squashfs-root/apprun-hooks/zz-frisky-fixups.sh
-          test -x squashfs-root/usr/lib/gstreamer-1.0/gst-plugin-scanner
-          test -f squashfs-root/usr/lib/libgtk-4.so.1
-          test -f squashfs-root/usr/lib/libadwaita-1.so.0
-          echo "GTK, libadwaita and the GStreamer scanner are all bundled"
+
+          # Search rather than assume a path: the scanner and libraries land in
+          # different directories depending on the distribution linuxdeploy ran
+          # on, which is exactly why the hook probes several candidates.
+          for lib in libgtk-4.so libadwaita-1.so libgstreamer-1.0.so; do
+            find squashfs-root -name "$lib*" | grep -q . \
+              || { echo "missing from the bundle: $lib"; exit 1; }
+          done
+          find squashfs-root -name gst-plugin-scanner -type f | grep -q . \
+            || { echo "missing from the bundle: gst-plugin-scanner"; exit 1; }
+
+          echo "bundled:"
+          find squashfs-root \( -name "libgtk-4.so*" -o -name "libadwaita-1.so*" \
+            -o -name gst-plugin-scanner \) -printf "  %P\n"
           rm -rf squashfs-root
 
       - uses: actions/upload-artifact@v4

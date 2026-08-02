@@ -285,14 +285,16 @@ impl FriskyWindow {
         let imp = self.imp();
         let channel = imp.selected.get();
 
+        // Deliberately not on the window itself: the pill rules are descendant
+        // selectors, so a channel class up there matches every pill in the
+        // window and the last matching rule wins. The tint overlay already
+        // covers the whole mini player, so it is the right place for it.
         for other in Channel::ALL {
             imp.play_button.remove_css_class(other.css_class());
             imp.compact_tint.remove_css_class(other.css_class());
-            self.remove_css_class(other.css_class());
         }
         imp.play_button.add_css_class(channel.css_class());
         imp.compact_tint.add_css_class(channel.css_class());
-        self.add_css_class(channel.css_class());
     }
 
     /// The four channel chips in the compact bar.
