@@ -77,8 +77,20 @@
   background-image: linear-gradient(144.39deg, #0ad8ff, #0278ff);
 }
 
+/* Classics is near-black by brand, which on a dark background left the primary
+ * action looking disabled. Lifted well clear of the backdrop and given a rim,
+ * so it still reads as monochrome but unmistakably as a button. */
 .play-button.channel-classics {
-  background-image: linear-gradient(144.39deg, #4a4a4a, #151515);
+  background-image: linear-gradient(144.39deg, #8e8e93, #3a3a3c);
+  box-shadow:
+    inset 0 0 0 1px alpha(#ffffff, 0.25),
+    0 2px 8px alpha(#000000, 0.45);
+}
+
+.play-button.channel-classics:hover {
+  box-shadow:
+    inset 0 0 0 1px alpha(#ffffff, 0.4),
+    0 3px 14px alpha(#000000, 0.55);
 }
 
 /* --------------------------------------------------------- channel pills */
