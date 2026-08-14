@@ -69,6 +69,13 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.7" date="2026-08-14">
+      <description>
+        <ul>
+          <li>The Compact Player command now reliably restores the compact window after any manual resize</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.6" date="2026-08-14">
       <description>
         <ul>

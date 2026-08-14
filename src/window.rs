@@ -6,6 +6,7 @@ use adw::subclass::prelude::*;
 use gtk::{gdk, gio, glib};
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::time::Duration;
 use tracing::{debug, warn};
 
 use crate::api::nowplaying::RefreshHandle;
@@ -241,7 +242,7 @@ impl FriskyWindow {
             .build();
 
         let compact = gio::ActionEntry::builder("compact")
-            .activate(|window: &Self, _, _| window.toggle_compact())
+            .activate(|window: &Self, _, _| window.enter_compact())
             .build();
 
         self.add_action_entries([toggle, refresh, preferences, compact, next_channel]);
@@ -396,17 +397,24 @@ impl FriskyWindow {
         }
     }
 
-    /// Snaps the window between the full and compact layouts.
+    /// Snaps the window to the compact layout.
     ///
-    /// The breakpoint keys off height, so this is just a resize — no separate
-    /// mode state to keep in sync with what the user does by dragging.
-    fn toggle_compact(&self) {
-        let compact = self.imp().view_stack.visible_child_name().as_deref() == Some("compact");
-        if compact {
-            self.set_default_size(420, 760);
-        } else {
-            self.set_default_size(470, 96);
-        }
+    /// This is deliberately not a toggle. A user may resize the compact player
+    /// before choosing the menu item again; the command must still mean
+    /// "Compact Player" rather than unexpectedly restoring the full window.
+    fn enter_compact(&self) {
+        let [reset, target] = compact_resize_steps();
+        self.set_default_size(reset.0, reset.1);
+
+        // A mapped GTK window must finish negotiating the reset before the new
+        // default is applied; an idle callback is still early enough for GTK
+        // to coalesce both requests. One frame is ample for the configure.
+        let window = self.downgrade();
+        glib::timeout_add_local_once(Duration::from_millis(16), move || {
+            if let Some(window) = window.upgrade() {
+                window.set_default_size(target.0, target.1);
+            }
+        });
     }
 
     /// Runs the waveform down to silence after playback stops.
@@ -980,6 +988,10 @@ fn artwork_needs_reset(previous: Option<u64>, next: Option<u64>) -> bool {
     previous != next
 }
 
+fn compact_resize_steps() -> [(i32, i32); 2] {
+    [(-1, -1), (470, 96)]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -996,5 +1008,12 @@ mod tests {
         assert!(artwork_needs_reset(Some(1), Some(2)));
         assert!(artwork_needs_reset(Some(1), None));
         assert!(!artwork_needs_reset(Some(1), Some(1)));
+    }
+
+    #[test]
+    fn compact_action_resets_before_reapplying_its_size() {
+        let [reset, target] = compact_resize_steps();
+        assert_eq!(reset, (-1, -1));
+        assert!(target.1 < 300, "must activate the compact breakpoint");
     }
 }
