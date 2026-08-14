@@ -37,6 +37,15 @@
       </description>
     </key>
 
+    <key name="pulse-cover-art" type="b">
+      <default>true</default>
+      <summary>Pulse cover art with the audio</summary>
+      <description>
+        Scale the cover art subtly in response to audio peaks. The effect is
+        stronger in the compact player and slight in the full layout.
+      </description>
+    </key>
+
     <key name="audio-device" type="s">
       <default>''</default>
       <summary>Audio output device</summary>

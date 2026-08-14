@@ -69,6 +69,16 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.8" date="2026-08-14">
+      <description>
+        <ul>
+          <li>Compact cover art is now circular and can pulse to audio peaks, with a subtler effect in the full player</li>
+          <li>A new preference can enable or disable cover-art pulsing immediately</li>
+          <li>Preferences opens in a usable separate window on desktop, including from the compact player</li>
+          <li>Phone shells keep adaptive attached preferences and disable the desktop-only compact layout</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.7" date="2026-08-14">
       <description>
         <ul>

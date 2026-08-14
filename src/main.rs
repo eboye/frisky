@@ -8,6 +8,7 @@ mod auth;
 mod channel;
 mod event;
 mod mpris;
+mod platform;
 mod player;
 mod preferences;
 mod window;

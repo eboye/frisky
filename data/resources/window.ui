@@ -446,7 +446,7 @@
     <!-- Below this height the full layout cannot breathe, so fall back to the
          compact bar. This also makes the Compact Player action a plain resize. -->
     <child>
-      <object class="AdwBreakpoint">
+      <object class="AdwBreakpoint" id="compact_breakpoint">
         <condition>max-height: 300sp</condition>
         <setter object="view_stack" property="visible-child-name">compact</setter>
         <setter object="toolbar_view" property="reveal-top-bars">False</setter>

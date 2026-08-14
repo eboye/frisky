@@ -10,35 +10,75 @@ use crate::channel::Quality;
 use crate::window::FriskyWindow;
 
 thread_local! {
-    /// The preferences dialog currently on screen, if any.
+    /// The preferences window currently on screen, if any.
     ///
     /// Held weakly so it is not kept alive past its close. Asking for
     /// preferences again — from the menu and the accelerator both — should
     /// raise the one already up rather than stack a second one behind it.
+    static OPEN_WINDOW: RefCell<Option<glib::WeakRef<adw::PreferencesWindow>>> =
+        const { RefCell::new(None) };
     static OPEN_DIALOG: RefCell<Option<glib::WeakRef<adw::PreferencesDialog>>> =
         const { RefCell::new(None) };
 }
 
 pub fn present(window: &FriskyWindow) {
+    if crate::platform::is_mobile_session() {
+        present_attached(window);
+    } else {
+        present_detached(window);
+    }
+}
+
+fn present_attached(window: &FriskyWindow) {
     let existing = OPEN_DIALOG.with(|slot| slot.borrow().as_ref().and_then(|open| open.upgrade()));
-    if let Some(dialog) = existing {
-        adw::prelude::AdwDialogExt::present(&dialog, Some(window));
+    if let Some(preferences) = existing {
+        adw::prelude::AdwDialogExt::present(&preferences, Some(window));
         return;
     }
 
     let settings = gio::Settings::new(crate::app::APP_ID);
-
-    let dialog = adw::PreferencesDialog::builder()
+    let preferences = adw::PreferencesDialog::builder()
         .title("Preferences")
         .build();
-    dialog.add(&audio_page(window, &settings));
-
-    dialog.connect_closed(|_| {
+    preferences.add(&audio_page(window, &settings));
+    preferences.connect_closed(|_| {
         OPEN_DIALOG.with(|slot| *slot.borrow_mut() = None);
     });
-    OPEN_DIALOG.with(|slot| *slot.borrow_mut() = Some(dialog.downgrade()));
+    OPEN_DIALOG.with(|slot| *slot.borrow_mut() = Some(preferences.downgrade()));
+    adw::prelude::AdwDialogExt::present(&preferences, Some(window));
+}
 
-    adw::prelude::AdwDialogExt::present(&dialog, Some(window));
+fn present_detached(window: &FriskyWindow) {
+    let existing = OPEN_WINDOW.with(|slot| slot.borrow().as_ref().and_then(|open| open.upgrade()));
+    if let Some(preferences) = existing {
+        preferences.present();
+        return;
+    }
+
+    let settings = gio::Settings::new(crate::app::APP_ID);
+    let (width, height) = preferences_window_size();
+
+    // This must remain a real window rather than an AdwDialog. Dialogs are
+    // embedded as bottom sheets and cannot fit inside the 96 px compact player.
+    let preferences = adw::PreferencesWindow::builder()
+        .title("Preferences")
+        .transient_for(window)
+        .destroy_with_parent(true)
+        .default_width(width)
+        .default_height(height)
+        .build();
+    preferences.add(&audio_page(window, &settings));
+
+    preferences.connect_destroy(|_| {
+        OPEN_WINDOW.with(|slot| *slot.borrow_mut() = None);
+    });
+    OPEN_WINDOW.with(|slot| *slot.borrow_mut() = Some(preferences.downgrade()));
+
+    preferences.present();
+}
+
+fn preferences_window_size() -> (i32, i32) {
+    (520, 720)
 }
 
 fn audio_page(window: &FriskyWindow, settings: &gio::Settings) -> adw::PreferencesPage {
@@ -49,9 +89,23 @@ fn audio_page(window: &FriskyWindow, settings: &gio::Settings) -> adw::Preferenc
 
     page.add(&output_group(settings));
     page.add(&quality_group(settings));
+    page.add(&visual_group(settings));
     page.add(&notification_group(settings));
     page.add(&account_group(window));
     page
+}
+
+fn visual_group(settings: &gio::Settings) -> adw::PreferencesGroup {
+    let group = adw::PreferencesGroup::builder().title("Visuals").build();
+
+    let row = adw::SwitchRow::builder()
+        .title("Pulse Cover Art")
+        .subtitle("Move the cover subtly with audio peaks, more visibly in the compact player.")
+        .build();
+
+    settings.bind("pulse-cover-art", &row, "active").build();
+    group.add(&row);
+    group
 }
 
 fn notification_group(settings: &gio::Settings) -> adw::PreferencesGroup {
@@ -306,4 +360,16 @@ async fn log_in(email: String, password: String) -> anyhow::Result<()> {
             anyhow::Ok(())
         })
         .await?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detached_preferences_are_taller_than_the_compact_breakpoint() {
+        let (width, height) = preferences_window_size();
+        assert!(width >= 360);
+        assert!(height > 300);
+    }
 }

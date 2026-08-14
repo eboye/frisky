@@ -20,6 +20,46 @@ use crate::widgets::channel_pill::ChannelPill;
 use crate::widgets::tracklist::Tracklist;
 use crate::widgets::visualizer::{Visualizer, VisualizerSize};
 
+const COVER_PULSE_CLASSES: [&str; 6] = [
+    "cover-pulse-0",
+    "cover-pulse-1",
+    "cover-pulse-2",
+    "cover-pulse-3",
+    "cover-pulse-4",
+    "cover-pulse-5",
+];
+
+/// Turns broadcast RMS into a short-lived beat envelope. The slow baseline
+/// removes the station's heavily compressed average loudness so peaks, rather
+/// than a permanently large cover, drive the effect.
+#[derive(Debug, Default)]
+struct CoverPulse {
+    baseline: Option<f64>,
+    envelope: f64,
+}
+
+impl CoverPulse {
+    fn push(&mut self, level: f64) -> u8 {
+        if !level.is_finite() {
+            return 0;
+        }
+        let level = level.clamp(0.0, 1.0);
+        let baseline = self.baseline.get_or_insert(level);
+        *baseline += (level - *baseline) * 0.02;
+
+        let transient = (level - *baseline).max(0.0) * 6.0;
+        let target = (transient + level * 0.08).clamp(0.0, 1.0);
+        let rate = if target > self.envelope { 0.65 } else { 0.18 };
+        self.envelope += (target - self.envelope) * rate;
+
+        (self.envelope * 5.99).floor() as u8
+    }
+
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
 mod imp {
     use super::*;
     use std::cell::{Cell, RefCell};
@@ -82,6 +122,8 @@ mod imp {
         pub compact_play_icon: TemplateChild<gtk::Image>,
         #[template_child]
         pub compact_play_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub compact_breakpoint: TemplateChild<adw::Breakpoint>,
 
         pub player: RefCell<Option<Rc<Player>>>,
         pub client: RefCell<Option<FriskyClient>>,
@@ -109,6 +151,9 @@ mod imp {
         /// premium stream is asynchronous, so its result has to be discarded if
         /// the user has since stopped or picked another channel.
         pub playback_generation: Cell<u64>,
+        pub pulse_enabled: Cell<bool>,
+        pub pulse_step: Cell<u8>,
+        pub(super) cover_pulse: RefCell<CoverPulse>,
     }
 
     #[glib::object_subclass]
@@ -172,6 +217,7 @@ impl FriskyWindow {
         self.build_compact_chips();
         self.build_channel_pills();
         self.setup_actions();
+        self.configure_platform();
         self.setup_volume();
     }
 
@@ -191,6 +237,7 @@ impl FriskyWindow {
         *imp.refresh.borrow_mut() = Some(refresh);
         *imp.settings.borrow_mut() = Some(settings);
 
+        self.setup_cover_pulse();
         self.apply_output_device();
         self.restore_state();
         self.spawn_event_loop(events);
@@ -246,6 +293,24 @@ impl FriskyWindow {
             .build();
 
         self.add_action_entries([toggle, refresh, preferences, compact, next_channel]);
+    }
+
+    fn configure_platform(&self) {
+        if !crate::platform::is_mobile_session() {
+            return;
+        }
+
+        // Phone shells manage a single adaptive surface. Keep the full layout
+        // even in landscape and make the desktop-only resize command inert.
+        self.imp().compact_breakpoint.set_condition(None);
+        self.imp().view_stack.set_visible_child_name("full");
+        self.imp().toolbar_view.set_reveal_top_bars(true);
+        if let Some(action) = self
+            .lookup_action("compact")
+            .and_downcast::<gio::SimpleAction>()
+        {
+            action.set_enabled(false);
+        }
     }
 
     /// Builds a visualiser for each layout.
@@ -403,6 +468,9 @@ impl FriskyWindow {
     /// before choosing the menu item again; the command must still mean
     /// "Compact Player" rather than unexpectedly restoring the full window.
     fn enter_compact(&self) {
+        if crate::platform::is_mobile_session() {
+            return;
+        }
         let [reset, target] = compact_resize_steps();
         self.set_default_size(reset.0, reset.1);
 
@@ -492,6 +560,28 @@ impl FriskyWindow {
                 if let Some(settings) = imp.settings.borrow().as_ref() {
                     let _ = settings.set_double("volume", value);
                 }
+            }
+        });
+    }
+
+    fn setup_cover_pulse(&self) {
+        let Some(settings) = self.imp().settings.borrow().clone() else {
+            return;
+        };
+
+        self.imp()
+            .pulse_enabled
+            .set(settings.boolean("pulse-cover-art"));
+
+        let window = self.downgrade();
+        settings.connect_changed(Some("pulse-cover-art"), move |settings, _| {
+            let Some(window) = window.upgrade() else {
+                return;
+            };
+            let enabled = settings.boolean("pulse-cover-art");
+            window.imp().pulse_enabled.set(enabled);
+            if !enabled {
+                window.reset_cover_pulse();
             }
         });
     }
@@ -692,6 +782,7 @@ impl FriskyWindow {
                 for visualizer in self.imp().visualizers.borrow().iter() {
                     visualizer.push(level);
                 }
+                self.update_cover_pulse(level);
             }
             AppEvent::Schedule(_) => {}
             AppEvent::Error(message) => self.toast(&message),
@@ -829,6 +920,7 @@ impl FriskyWindow {
 
         match state {
             PlayerState::Buffering => {
+                self.reset_cover_pulse();
                 for visualizer in imp.visualizers.borrow().iter() {
                     visualizer.reset_range();
                 }
@@ -848,6 +940,7 @@ impl FriskyWindow {
                 imp.compact_play_button.set_tooltip_text(Some("Stop"));
             }
             PlayerState::Stopped => {
+                self.reset_cover_pulse();
                 self.stop_progress_tick();
                 self.start_decay();
                 imp.play_stack.set_visible_child_name("idle");
@@ -874,6 +967,35 @@ impl FriskyWindow {
         }
 
         crate::mpris::notify_changed();
+    }
+
+    fn update_cover_pulse(&self, level: f64) {
+        if !self.imp().pulse_enabled.get() {
+            return;
+        }
+        let step = self.imp().cover_pulse.borrow_mut().push(level);
+        self.set_cover_pulse_step(step);
+    }
+
+    fn reset_cover_pulse(&self) {
+        self.imp().cover_pulse.borrow_mut().reset();
+        self.set_cover_pulse_step(0);
+    }
+
+    fn set_cover_pulse_step(&self, step: u8) {
+        let imp = self.imp();
+        let step = step.min((COVER_PULSE_CLASSES.len() - 1) as u8);
+        if imp.pulse_step.replace(step) == step {
+            return;
+        }
+
+        for class in COVER_PULSE_CLASSES {
+            imp.artwork.remove_css_class(class);
+            imp.compact_artwork.remove_css_class(class);
+        }
+        let class = COVER_PULSE_CLASSES[usize::from(step)];
+        imp.artwork.add_css_class(class);
+        imp.compact_artwork.add_css_class(class);
     }
 
     // ----------------------------------------------------------- presentation
@@ -1015,5 +1137,33 @@ mod tests {
         let [reset, target] = compact_resize_steps();
         assert_eq!(reset, (-1, -1));
         assert!(target.1 < 300, "must activate the compact breakpoint");
+    }
+
+    #[test]
+    fn cover_pulse_reacts_to_peaks_and_settles_again() {
+        let mut pulse = CoverPulse::default();
+        for _ in 0..20 {
+            pulse.push(0.5);
+        }
+
+        let peak = pulse.push(0.75);
+        assert!(peak > 0, "a peak above the running baseline should pulse");
+
+        let mut settled = peak;
+        for _ in 0..60 {
+            settled = pulse.push(0.5);
+        }
+        assert!(settled < peak, "the pulse should decay after the peak");
+    }
+
+    #[test]
+    fn cover_pulse_reset_returns_to_rest() {
+        let mut pulse = CoverPulse::default();
+        pulse.push(0.2);
+        pulse.push(1.0);
+        pulse.reset();
+
+        assert_eq!(pulse.push(0.0), 0);
+        assert_eq!(pulse.push(f64::NAN), 0);
     }
 }

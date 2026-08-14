@@ -161,6 +161,12 @@ The window has two layouts in a `GtkStack`, switched by an `AdwBreakpoint` on
 height. There is no separate "mode" state — the breakpoint keys off the window
 size, so dragging the window and using the menu item cannot disagree.
 
+On desktop, preferences is a separate transient `AdwPreferencesWindow`, not an
+embedded dialog. It therefore keeps a usable size when opened from the 96 px-tall
+compact player without changing the player's layout. Phone shells such as Phosh
+use the adaptive attached dialog instead and disable the desktop-only compact
+layout.
+
 The compact player is a stack of layers, bottom to top: blurred cover art across
 the whole window, the channel gradient at 75%, the visualiser faint above that,
 then the controls. GTK CSS does support `filter: blur()` and `transform:
@@ -169,6 +175,10 @@ scale()`, which is what makes this possible.
 Both layouts get their own `Visualizer`. The one over the cover art fades out on
 hover so the artwork is never permanently hidden; the compact one is a backdrop
 and has no fade.
+
+When enabled in preferences, the same audio levels drive a short-lived scale
+envelope on both cover pictures. It follows peaks above the broadcast's running
+average, with a smaller range in the full layout than in the compact player.
 
 ### The visualiser
 
@@ -203,10 +213,10 @@ interpret.
 
 ## State and settings
 
-GSettings holds the last channel, volume, quality, notification preference and
-audio device. The window follows the `audio-device` key while open, so a change
-in preferences restarts the stream immediately rather than at the next channel
-switch.
+GSettings holds the last channel, volume, quality, notification and cover-pulse
+preferences, and audio device. The window follows the `audio-device` key while
+open, so a change in preferences restarts the stream immediately rather than at
+the next channel switch.
 
 Restoring state deliberately does *not* start playback. An app that begins
 making noise on launch is hostile.

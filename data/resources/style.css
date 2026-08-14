@@ -24,7 +24,14 @@
 
 .artwork picture {
   border-radius: 16px;
+  transition: transform 70ms ease-out;
 }
+
+.artwork picture.cover-pulse-1 { transform: scale(1.005); }
+.artwork picture.cover-pulse-2 { transform: scale(1.010); }
+.artwork picture.cover-pulse-3 { transform: scale(1.015); }
+.artwork picture.cover-pulse-4 { transform: scale(1.020); }
+.artwork picture.cover-pulse-5 { transform: scale(1.025); }
 
 /* Sits behind the picture and shows through only while artwork is absent. */
 .artwork-placeholder {
@@ -288,9 +295,16 @@
 }
 
 .compact-art {
-  border-radius: 8px;
+  border-radius: 999px;
   background-color: alpha(#000000, 0.3);
+  transition: transform 70ms ease-out;
 }
+
+.compact-art.cover-pulse-1 { transform: scale(1.012); }
+.compact-art.cover-pulse-2 { transform: scale(1.024); }
+.compact-art.cover-pulse-3 { transform: scale(1.036); }
+.compact-art.cover-pulse-4 { transform: scale(1.048); }
+.compact-art.cover-pulse-5 { transform: scale(1.060); }
 
 .compact-title {
   font-weight: 600;
