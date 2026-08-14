@@ -65,7 +65,8 @@ to the window, so it ends when the window does.
 | `artwork.rs` | cover art fetch, disk cache, pruning |
 | `auth.rs` | login, keyring, entitlement checks |
 | `mpris.rs` | the MPRIS interface |
-| `preferences.rs` | the preferences dialog |
+| `platform.rs` | desktop/mobile shell capability detection |
+| `preferences.rs` | detached desktop preferences and attached mobile preferences |
 | `widgets/` | channel pills, tracklist, visualiser, buffering wave |
 
 `window.rs` is the largest file and the one to be most careful in: it is the

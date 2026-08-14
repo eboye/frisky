@@ -33,10 +33,11 @@ Built with GTK4, libadwaita and GStreamer.
 ## Features
 
 - **All four channels** — Frisky, Deep, Chill and Classics, each in its own brand gradient
-- **Cover art and tracklist** for the DJ mix currently on air
+- **Cover art and tracklist** for the DJ mix currently on air; the compact cover
+  is circular, and an optional beat pulse moves both covers with the live audio
 - **Live visualiser** over the artwork, auto-ranging to the levels actually arriving so
   heavily-limited broadcast audio still shows movement rather than a flat wall
-- **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>) — one row: the whole window becomes the channel
+- **Mini player** (<kbd>Ctrl</kbd>+<kbd>M</kbd>, desktop only) — one row: the whole window becomes the channel
   gradient over the blurred cover art, with the title bar folded in and the track, mix progress
   and channel chips alongside the controls
 - **Mix progress**, taken from the broadcast schedule rather than estimated
@@ -45,6 +46,8 @@ Built with GTK4, libadwaita and GStreamer.
 - **Output device picker** — send audio somewhere other than the system default, which is not
   always where the speakers are
 - **Notifications** when the mix changes, switchable off in Preferences
+- **Adaptive preferences** — a separate, usable window on desktop even when the
+  player is compact, and an attached dialog on mobile shells such as Phosh
 - **Optional login** for the 128 and 320 kbps subscriber tiers
 - A wave rather than a spinner while buffering, and a keyboard shortcut for everything
 - Follows the system light/dark preference; remembers your channel and volume
@@ -152,7 +155,7 @@ change, and cutting a release are covered in
 |---|---|
 | <kbd>Space</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd> | Play or stop |
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Next channel |
-| <kbd>Ctrl</kbd>+<kbd>M</kbd> | Mini player |
+| <kbd>Ctrl</kbd>+<kbd>M</kbd> | Mini player (desktop only) |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>F5</kbd> | Refresh now playing |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |
 | <kbd>Ctrl</kbd>+<kbd>?</kbd> | Keyboard shortcuts |
@@ -236,6 +239,7 @@ src/
 ├── preferences.rs   quality and account settings
 ├── audio.rs         output device enumeration
 ├── event.rs         the tokio → GTK event channel
+├── platform.rs      desktop/mobile shell capability detection
 ├── api/             HTTP client, models, now-playing socket
 └── widgets/         channel pills, tracklist, visualiser, buffering wave
 ```
@@ -245,8 +249,14 @@ Background work runs on a tokio runtime and reaches the GTK main loop as
 
 ## Platform support
 
-**Linux, x86_64.** Frisky is built on GTK4, libadwaita, MPRIS and the Secret
-Service, and it targets the GNOME desktop.
+**Linux, x86_64 releases.** Frisky is built on GTK4, libadwaita, MPRIS and the
+Secret Service, and it targets GNOME-compatible desktops. When running under
+Phosh, GNOME Mobile or Plasma Mobile, it keeps preferences attached to the main
+window and disables the desktop-only compact player, including in landscape.
+
+The interface is mobile-aware, but published artifacts are currently x86_64.
+Most phones therefore need an aarch64 build from source until ARM release
+artifacts are added.
 
 Other platforms are not planned, but the groundwork has been analysed so nobody
 has to start from scratch:
