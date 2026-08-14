@@ -69,6 +69,16 @@
   </content_rating>
 
   <releases>
+    <release version="0.1.6" date="2026-08-14">
+      <description>
+        <ul>
+          <li>The buffering animation now stops when playback connects or is stopped, avoiding needless background redraws</li>
+          <li>A delayed retry from an old stream can no longer restart a newer playback request</li>
+          <li>Artwork downloads are bounded in memory even when the server uses a chunked response</li>
+          <li>Switching mixes no longer leaves the previous mix's cover art on screen</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.5" date="2026-08-02">
       <description>
         <ul>

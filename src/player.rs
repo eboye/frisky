@@ -44,6 +44,8 @@ pub struct Player {
     level_seen: Cell<bool>,
     /// Chosen output device; empty means whatever playbin picks.
     device: RefCell<String>,
+    /// Invalidates delayed retries when a newer start or stop wins the race.
+    playback_generation: Cell<u64>,
 }
 
 impl Player {
@@ -83,6 +85,7 @@ impl Player {
             bus_watch: RefCell::new(None),
             level_seen: Cell::new(false),
             device: RefCell::new(String::new()),
+            playback_generation: Cell::new(0),
         });
 
         player.watch_bus()?;
@@ -98,7 +101,7 @@ impl Player {
         *self.device.borrow_mut() = device_id.to_owned();
 
         if self.is_active() {
-            self.start();
+            self.restart_pipeline();
         }
     }
 
@@ -119,6 +122,12 @@ impl Player {
         self.retries.set(0);
         self.level_seen.set(false);
         *self.current.borrow_mut() = Some((channel, quality, token));
+        self.restart_pipeline();
+    }
+
+    fn restart_pipeline(&self) {
+        self.playback_generation
+            .set(self.playback_generation.get().wrapping_add(1));
         self.start();
     }
 
@@ -150,6 +159,8 @@ impl Player {
     }
 
     pub fn stop(&self) {
+        self.playback_generation
+            .set(self.playback_generation.get().wrapping_add(1));
         let _ = self.playbin.set_state(gst::State::Null);
         self.retries.set(0);
         self.set_state(PlayerState::Stopped);
@@ -289,16 +300,26 @@ impl Player {
         self.set_state(PlayerState::Buffering);
         debug!("retrying stream ({attempt}/{MAX_RETRIES})");
 
+        let generation = self.playback_generation.get();
         let player = Rc::downgrade(self);
         glib::timeout_add_local_once(RETRY_DELAY, move || {
             if let Some(player) = player.upgrade() {
-                // A stop or channel change during the delay wins.
-                if player.state.get() == PlayerState::Buffering {
-                    player.start();
+                // A stop, channel/device change, or an earlier retry during the
+                // delay wins. State alone cannot distinguish those starts.
+                if retry_still_valid(
+                    generation,
+                    player.playback_generation.get(),
+                    player.state.get(),
+                ) {
+                    player.restart_pipeline();
                 }
             }
         });
     }
+}
+
+fn retry_still_valid(scheduled: u64, current: u64, state: PlayerState) -> bool {
+    scheduled == current && state == PlayerState::Buffering
 }
 
 impl Drop for Player {
@@ -394,6 +415,13 @@ fn redact_token(uri: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn delayed_retry_cannot_override_a_newer_playback_request() {
+        assert!(retry_still_valid(7, 7, PlayerState::Buffering));
+        assert!(!retry_still_valid(7, 8, PlayerState::Buffering));
+        assert!(!retry_still_valid(7, 7, PlayerState::Stopped));
+    }
 
     #[test]
     fn strips_station_tag_and_promo() {

@@ -19,6 +19,11 @@ pub const API_BASE: &str = "https://api.frisky.fm/v3";
 /// higher-bitrate mounts — so there is nothing to spoof.
 const USER_AGENT: &str = concat!("frisky-gtk/", env!("CARGO_PKG_VERSION"));
 
+/// Generous ceiling for a 1200x1200 JPEG/PNG. The URL is API-controlled, but a
+/// bad or compromised endpoint must not be able to grow the process without
+/// bound through a chunked response.
+const MAX_ARTWORK_BYTES: usize = 16 * 1024 * 1024;
+
 #[derive(Clone)]
 pub struct FriskyClient {
     http: reqwest::Client,
@@ -69,7 +74,7 @@ impl FriskyClient {
     /// Downloads raw artwork bytes from wherever the API points (S3 or
     /// CloudFront, not the API host).
     pub async fn fetch_bytes(&self, url: &str) -> Result<Vec<u8>> {
-        let response = self
+        let mut response = self
             .http
             .get(url)
             .send()
@@ -77,7 +82,20 @@ impl FriskyClient {
             .with_context(|| format!("requesting {url}"))?
             .error_for_status()
             .with_context(|| format!("unexpected status from {url}"))?;
-        Ok(response.bytes().await?.to_vec())
+
+        if let Some(length) = response.content_length() {
+            anyhow::ensure!(
+                length <= MAX_ARTWORK_BYTES as u64,
+                "artwork response is too large ({length} bytes)"
+            );
+        }
+
+        let capacity = response.content_length().unwrap_or(0) as usize;
+        let mut bytes = Vec::with_capacity(capacity.min(MAX_ARTWORK_BYTES));
+        while let Some(chunk) = response.chunk().await? {
+            append_bounded(&mut bytes, &chunk, MAX_ARTWORK_BYTES)?;
+        }
+        Ok(bytes)
     }
 
     /// Exchanges credentials for a subscriber token.
@@ -141,6 +159,15 @@ impl FriskyClient {
     }
 }
 
+fn append_bounded(destination: &mut Vec<u8>, chunk: &[u8], limit: usize) -> Result<()> {
+    anyhow::ensure!(
+        chunk.len() <= limit.saturating_sub(destination.len()),
+        "artwork response exceeds {limit} bytes"
+    );
+    destination.extend_from_slice(chunk);
+    Ok(())
+}
+
 /// Pulls a token out of the login response, tolerating the shapes the API
 /// might use.
 fn extract_token(value: &serde_json::Value) -> Option<String> {
@@ -183,6 +210,14 @@ fn object_keys(value: &serde_json::Value) -> Vec<String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn chunked_artwork_is_bounded_even_without_a_content_length() {
+        let mut bytes = vec![0; 4];
+        append_bounded(&mut bytes, &[1, 2], 6).unwrap();
+        assert_eq!(bytes.len(), 6);
+        assert!(append_bounded(&mut bytes, &[3], 6).is_err());
+    }
 
     #[test]
     fn extracts_token_from_known_shapes() {

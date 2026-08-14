@@ -91,7 +91,7 @@ mod imp {
         pub pills: RefCell<Vec<ChannelPill>>,
         pub now_playing: RefCell<HashMap<Channel, NowPlaying>>,
         pub selected: Cell<Channel>,
-        /// Show whose artwork is on screen, so repeat events are no-ops.
+        /// Show whose artwork belongs on screen, so stale downloads are ignored.
         pub displayed_show: Cell<Option<u64>>,
         /// Suppresses the settings write while loading the stored volume.
         pub loading_volume: Cell<bool>,
@@ -729,6 +729,12 @@ impl FriskyWindow {
         let imp = self.imp();
         let channel = imp.selected.get();
         let now_playing = imp.now_playing.borrow().get(&channel).cloned();
+        let next_show = now_playing.as_ref().and_then(|entry| entry.show_id);
+
+        let previous_show = imp.displayed_show.replace(next_show);
+        if artwork_needs_reset(previous_show, next_show) {
+            self.clear_artwork();
+        }
 
         imp.window_title.set_subtitle(channel.title());
 
@@ -738,7 +744,6 @@ impl FriskyWindow {
                 self.update_progress();
                 imp.track_subtitle.set_label(&entry.subtitle());
                 imp.compact_title.set_label(&entry.display_title());
-                imp.displayed_show.set(entry.show_id);
 
                 let has_tracks = imp
                     .tracklist
@@ -758,6 +763,15 @@ impl FriskyWindow {
 
         // The play button wears the selected channel's gradient.
         self.update_channel_styling();
+    }
+
+    fn clear_artwork(&self) {
+        let imp = self.imp();
+        imp.artwork.set_paintable(None::<&gdk::Paintable>);
+        imp.compact_artwork.set_paintable(None::<&gdk::Paintable>);
+        imp.compact_backdrop_art
+            .set_paintable(None::<&gdk::Paintable>);
+        imp.artwork_overlay.remove_css_class("has-art");
     }
 
     fn request_artwork(&self) {
@@ -803,6 +817,7 @@ impl FriskyWindow {
 
     fn on_player_state(&self, state: PlayerState) {
         let imp = self.imp();
+        self.set_buffering_animation(buffering_animation_active(state));
 
         match state {
             PlayerState::Buffering => {
@@ -954,5 +969,32 @@ impl FriskyWindow {
 
     fn present_preferences(&self) {
         crate::preferences::present(self);
+    }
+}
+
+fn buffering_animation_active(state: PlayerState) -> bool {
+    state == PlayerState::Buffering
+}
+
+fn artwork_needs_reset(previous: Option<u64>, next: Option<u64>) -> bool {
+    previous != next
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn buffering_animation_stops_after_connecting_or_stopping() {
+        assert!(buffering_animation_active(PlayerState::Buffering));
+        assert!(!buffering_animation_active(PlayerState::Playing));
+        assert!(!buffering_animation_active(PlayerState::Stopped));
+    }
+
+    #[test]
+    fn old_artwork_is_cleared_when_the_selected_show_changes() {
+        assert!(artwork_needs_reset(Some(1), Some(2)));
+        assert!(artwork_needs_reset(Some(1), None));
+        assert!(!artwork_needs_reset(Some(1), Some(1)));
     }
 }
